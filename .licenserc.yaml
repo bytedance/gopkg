@@ -10,7 +10,7 @@ header:
     - 'CREDITS'
     - '.gitignore'
     - '.licenserc.yaml'
-    - '.github/*'
+    - '.github/'
     - 'go.mod'
     - 'go.sum'
 
