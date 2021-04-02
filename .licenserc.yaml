@@ -8,5 +8,10 @@ header:
     - 'LICENSE'
     - 'NOTICE'
     - 'CREDITS'
+    - '.gitignore'
+    - '.licenserc.yaml'
+    - '.github/*'
+    - 'go.mod'
+    - 'go.sum'
 
   comment: on-failure
