@@ -16,12 +16,16 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
+
       - uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: License Eye
+        uses: apache/skywalking-eyes@v0.1.0
 
       - name: Vet
         run: go vet ./...

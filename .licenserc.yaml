@@ -1,0 +1,12 @@
+header:
+  license:
+    spdx-id: Apache-2.0
+    copyright-owner: ByteDance Inc.
+
+  paths-ignore:
+    - '**/*.md'
+    - 'LICENSE'
+    - 'NOTICE'
+    - 'CREDITS'
+
+  comment: on-failure
