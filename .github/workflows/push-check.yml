@@ -1,4 +1,4 @@
-name: Go Test
+name: Push Check
 
 on:
   push:
@@ -24,8 +24,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: License Eye
+      - name: Check License Header
         uses: apache/skywalking-eyes@v0.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Vet
         run: go vet ./...
