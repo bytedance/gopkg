@@ -5,10 +5,12 @@ Adapted from the [Contributor Covenant](https://www.contributor-covenant.org/)
 ## Your First Pull Request
 We use github for our codebase. You can start by reading [How To Pull Request](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests).
 
-## Semantic Versioning
-We use [gomod](https://golang.org/ref/mod) as our dependencies manager, also follow the [semantic versioning](https://semver.org/). For better experience, when we make breaking changes, we also introduce deprecation warnings in a minor version so that our users learn about the upcoming changes and migrate their code in advance.
+## Without Semantic Versioning
+We keep the stable code in branch `main` like `golang.org/x`. Development base on branch `develop`. And we promise the **Forward Compatibility** by adding new package directory with suffix `v2/v3` when code has break changes.
+
 ## Branch Organization
 We use [git-flow](https://nvie.com/posts/a-successful-git-branching-model/) as our branch organization, as known as [FDD](https://en.wikipedia.org/wiki/Feature-driven_development)
+
 
 ## Bugs
 ### 1. How to Find Known Issues
@@ -46,7 +48,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 10. In GitHub, send a pull request to `gopkg:develop`
 
 ## Contribution Prerequisites
-- Our code has been fully test with [Go](https://golang.org/) v1.15.0+, so you have installed at v1.15.0+.
+- Our code has been fully test with [Go](https://golang.org/) v1.15.0+.
 - You need lint tools check before submit your pull request. [gofmt](https://golang.org/pkg/cmd/gofmt/) and [golangci-lint](https://github.com/golangci/golangci-lint)
 - You are familiar with [Github](https://github.com) 
 - Maybe you need familiar with [Actions](https://github.com/features/actions)(our default workflow tool).
