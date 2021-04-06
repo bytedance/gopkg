@@ -48,8 +48,8 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 10. In GitHub, send a pull request to `gopkg:develop`
 
 ## Contribution Prerequisites
-- Our code has been fully test with [Go](https://golang.org/) v1.15.0+.
-- You need lint tools check before submit your pull request. [gofmt](https://golang.org/pkg/cmd/gofmt/) and [golangci-lint](https://github.com/golangci/golangci-lint)
+- Our development environment keeps up with [Go Official](https://golang.org/project/).
+- You need fully checking with lint tools before submit your pull request. [gofmt](https://golang.org/pkg/cmd/gofmt/) and [golangci-lint](https://github.com/golangci/golangci-lint)
 - You are familiar with [Github](https://github.com) 
 - Maybe you need familiar with [Actions](https://github.com/features/actions)(our default workflow tool).
 
