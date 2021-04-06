@@ -74,7 +74,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 1. Search [GitHub](https://github.com/bytedance/gopkg/pulls) for an open or closed PR that relates to your submission. You don't want to duplicate existing efforts.
 2. 
 3. Be sure that an issue describes the problem you're fixing, or documents the design for the feature you'd like to add. Discussing the design upfront helps to ensure that we're ready to accept your work.
-4. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the angular/angular repo.
+4. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the bytedance/gopkg repo.
 5. In your forked repository, make your changes in a new git branch:
     ```
     git checkout -b my-fix-branch develop
