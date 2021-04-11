@@ -79,7 +79,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
     git checkout -b my-fix-branch develop
     ```
 5. Create your patch, including appropriate test cases.
-6. Follow our [Style Guides](#code_style_guides).
+6. Follow our [Style Guides](#code-style-guides).
 7. Commit your changes using a descriptive commit message that follows [AngularJS Git Commit Message Conventions](https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit).
    Adherence to these conventions is necessary because release notes are automatically generated from these messages.
 8. Push your branch to GitHub:
