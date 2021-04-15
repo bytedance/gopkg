@@ -191,43 +191,6 @@ func TestPerPMetricser4(t *testing.T) {
 	}
 }
 
-func TestPerPMetricser5(t *testing.T) {
-	_, err := newPerPWindowWithOptions(time.Millisecond, 99)
-	assert(t, err != nil)
-
-	p, _ := NewPanel(nil, Options{BucketTime: time.Millisecond, BucketNums: 100})
-	b := p.(*panel).getBreaker("test")
-	m := b.metricer
-	expire := time.Millisecond * 101
-
-	for i := 0; i < 105; i++ {
-		m.Succeed()
-		time.Sleep(time.Millisecond)
-	}
-
-	time.Sleep(expire)
-
-	assert(t, m.Samples() == 0)
-	assert(t, m.ErrorRate() == 0)
-}
-
-func TestPerPMetricser6(t *testing.T) {
-	_, err := newPerPWindowWithOptions(time.Millisecond, 99)
-	assert(t, err != nil)
-
-	p, _ := NewPanel(nil, Options{BucketTime: time.Millisecond, BucketNums: 100})
-	b := p.(*panel).getBreaker("test")
-	m := b.metricer
-
-	for i := 0; i < 105; i++ {
-		m.Fail()
-		time.Sleep(time.Millisecond)
-	}
-
-	assert(t, m.ConseTime() > 0)
-	assert(t, m.ConseErrors() > 0)
-}
-
 func BenchmarkPerPWindow(b *testing.B) {
 	m := newPerPWindow()
 	b.ResetTimer()
