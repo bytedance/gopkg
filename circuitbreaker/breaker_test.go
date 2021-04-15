@@ -284,7 +284,7 @@ func TestBreakerConcurrent(t *testing.T) {
 				b.Fail()
 			}
 			if b.State() != Open {
-				t.Fatalf("want open state but got %s", b.State())
+				t.Errorf("want open state but got %s", b.State())
 			}
 
 			// CoolingTimeout
@@ -305,10 +305,10 @@ func TestBreakerConcurrent(t *testing.T) {
 			}
 			wg.Wait()
 			if pass != 1 {
-				t.Fatalf("want 1 pass but got %d pass", pass)
+				t.Errorf("want 1 pass but got %d pass", pass)
 			}
 			if fail != 49 {
-				t.Fatalf("want 49 fails but got %d fails", fail)
+				t.Errorf("want 49 fails but got %d fails", fail)
 			}
 		}()
 	}
