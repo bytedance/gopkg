@@ -191,26 +191,6 @@ func TestMetricser4(t *testing.T) {
 	}
 }
 
-func TestMetricser5(t *testing.T) {
-	_, err := newWindowWithOptions(time.Millisecond, 99)
-	assert(t, err != nil)
-
-	p, _ := NewPanel(nil, Options{BucketTime: time.Millisecond, BucketNums: 100})
-	b := p.(*panel).getBreaker("test")
-	m := b.metricer
-	expire := time.Millisecond * 101
-
-	for i := 0; i < 105; i++ {
-		m.Succeed()
-		time.Sleep(time.Millisecond)
-	}
-
-	time.Sleep(expire)
-
-	assert(t, m.Samples() == 0)
-	assert(t, m.ErrorRate() == 0)
-}
-
 func TestMetricser6(t *testing.T) {
 	_, err := newWindowWithOptions(time.Millisecond, 99)
 	assert(t, err != nil)
