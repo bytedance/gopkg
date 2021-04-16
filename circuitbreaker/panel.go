@@ -28,9 +28,10 @@ type panel struct {
 
 type sharedTicker struct {
 	sync.Mutex
-	started bool
-	ticker  *time.Ticker
-	panels  map[*panel]struct{}
+	started  bool
+	stopChan chan bool
+	ticker   *time.Ticker
+	panels   map[*panel]struct{}
 }
 
 var tickerMap sync.Map // 共用 ticker
@@ -62,14 +63,15 @@ func NewPanel(changeHandler PanelStateChangeHandler,
 		defaultOptions: defaultOptions,
 		changeHandler:  changeHandler,
 	}
-	ti, _ := tickerMap.LoadOrStore(p.defaultOptions.BucketTime, &sharedTicker{panels: make(map[*panel]struct{})})
+	ti, _ := tickerMap.LoadOrStore(p.defaultOptions.BucketTime,
+		&sharedTicker{panels: make(map[*panel]struct{}), stopChan: make(chan bool, 1)})
 	t := ti.(*sharedTicker)
 	t.Lock()
 	t.panels[p] = struct{}{}
 	if !t.started {
 		t.started = true
 		t.ticker = time.NewTicker(p.defaultOptions.BucketTime)
-		go t.tick()
+		go t.tick(t.ticker)
 	}
 	t.Unlock()
 	return p, nil
@@ -159,24 +161,33 @@ func (p *panel) Close() {
 	t.Lock()
 	delete(t.panels, p)
 	if len(t.panels) == 0 {
+		t.stopChan <- true
 		t.started = false
-		t.ticker.Stop()
 	}
 	t.Unlock()
 }
 
 // tick .
-func (t *sharedTicker) tick() {
-	for range t.ticker.C {
-		t.Lock()
-		for p := range t.panels {
-			p.breakers.Range(func(key, value interface{}) bool {
-				if b, ok := value.(*breaker); ok {
-					b.metricer.tick()
-				}
-				return true
-			})
+// pass ticker but not use t.ticker directly is to ignore race.
+func (t *sharedTicker) tick(ticker *time.Ticker) {
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			t.Lock()
+			for p := range t.panels {
+				p.breakers.Range(func(key, value interface{}) bool {
+					if b, ok := value.(*breaker); ok {
+						b.metricer.tick()
+					}
+					return true
+				})
+			}
+			t.Unlock()
+		case stop := <-t.stopChan:
+			if stop == true {
+				return
+			}
 		}
-		t.Unlock()
 	}
 }
