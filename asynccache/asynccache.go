@@ -71,11 +71,9 @@ type AsyncCache interface {
 
 // asyncCache .
 type asyncCache struct {
-	sfg           sf.Group
-	opt           Options
-	data          sync.Map
-	refreshTicker *time.Ticker
-	expireTicker  *time.Ticker
+	sfg  sf.Group
+	opt  Options
+	data sync.Map
 }
 
 type sharedTicker struct {
