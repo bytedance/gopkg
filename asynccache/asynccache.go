@@ -76,11 +76,19 @@ type asyncCache struct {
 	data sync.Map
 }
 
+type tickerType int
+
+const (
+	refreshTicker tickerType = iota
+	expireTicker
+)
+
 type sharedTicker struct {
 	sync.Mutex
-	started bool
-	ticker  *time.Ticker
-	caches  map[*asyncCache]struct{}
+	started  bool
+	stopChan chan bool
+	ticker   *time.Ticker
+	caches   map[*asyncCache]struct{}
 }
 
 var (
@@ -122,28 +130,30 @@ func NewAsyncCache(opt Options) AsyncCache {
 		if c.opt.ExpireDuration == 0 {
 			panic("asynccache: invalid ExpireDuration")
 		}
-		ti, _ := expireTickerMap.LoadOrStore(c.opt.ExpireDuration, &sharedTicker{caches: make(map[*asyncCache]struct{})})
-		t := ti.(*sharedTicker)
-		t.Lock()
-		t.caches[c] = struct{}{}
-		if !t.started {
-			t.started = true
-			t.ticker = time.NewTicker(c.opt.ExpireDuration)
-			go t.expirer()
+		ti, _ := expireTickerMap.LoadOrStore(c.opt.ExpireDuration,
+			&sharedTicker{caches: make(map[*asyncCache]struct{}), stopChan: make(chan bool, 1)})
+		et := ti.(*sharedTicker)
+		et.Lock()
+		et.caches[c] = struct{}{}
+		if !et.started {
+			et.started = true
+			et.ticker = time.NewTicker(c.opt.ExpireDuration)
+			go et.tick(et.ticker, expireTicker)
 		}
-		t.Unlock()
+		et.Unlock()
 	}
 
-	ti, _ := refreshTickerMap.LoadOrStore(c.opt.RefreshDuration, &sharedTicker{caches: make(map[*asyncCache]struct{})})
-	t := ti.(*sharedTicker)
-	t.Lock()
-	t.caches[c] = struct{}{}
-	if !t.started {
-		t.started = true
-		t.ticker = time.NewTicker(c.opt.RefreshDuration)
-		go t.refresher()
+	ti, _ := refreshTickerMap.LoadOrStore(c.opt.RefreshDuration,
+		&sharedTicker{caches: make(map[*asyncCache]struct{}), stopChan: make(chan bool, 1)})
+	rt := ti.(*sharedTicker)
+	rt.Lock()
+	rt.caches[c] = struct{}{}
+	if !rt.started {
+		rt.started = true
+		rt.ticker = time.NewTicker(c.opt.RefreshDuration)
+		go rt.tick(rt.ticker, refreshTicker)
 	}
-	t.Unlock()
+	rt.Unlock()
 	return c
 }
 
@@ -238,62 +248,60 @@ func (c *asyncCache) DeleteIf(shouldDelete func(key string) bool) {
 	})
 }
 
-// Close stops the background refresh goroutine.
+// Close stops the background goroutine.
 func (c *asyncCache) Close() {
 	// close refresh ticker
 	ti, _ := refreshTickerMap.Load(c.opt.RefreshDuration)
-	t := ti.(*sharedTicker)
-	t.Lock()
-	delete(t.caches, c)
-	if len(t.caches) == 0 {
-		t.started = false
-		t.ticker.Stop()
+	rt := ti.(*sharedTicker)
+	rt.Lock()
+	delete(rt.caches, c)
+	if len(rt.caches) == 0 {
+		rt.stopChan <- true
+		rt.started = false
 	}
-	t.Unlock()
+	rt.Unlock()
 
 	if c.opt.EnableExpire {
 		// close expire ticker
 		ti, _ := expireTickerMap.Load(c.opt.ExpireDuration)
-		t := ti.(*sharedTicker)
-		t.Lock()
-		delete(t.caches, c)
-		if len(t.caches) == 0 {
-			t.started = false
-			t.ticker.Stop()
+		et := ti.(*sharedTicker)
+		et.Lock()
+		delete(et.caches, c)
+		if len(et.caches) == 0 {
+			et.stopChan <- true
+			et.started = false
 		}
-		t.Unlock()
+		et.Unlock()
 	}
 }
 
-func (t *sharedTicker) refresher() {
+// tick .
+// pass ticker but not use t.ticker directly is to ignore race.
+func (t *sharedTicker) tick(ticker *time.Ticker, tt tickerType) {
 	var wg sync.WaitGroup
-	for range t.ticker.C {
-		t.Lock()
-		for c := range t.caches {
-			wg.Add(1)
-			go func(c *asyncCache) {
-				defer wg.Done()
-				c.refresh()
-			}(c)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			t.Lock()
+			for c := range t.caches {
+				wg.Add(1)
+				go func(c *asyncCache) {
+					defer wg.Done()
+					if tt == expireTicker {
+						c.expire()
+					} else {
+						c.refresh()
+					}
+				}(c)
+			}
+			wg.Wait()
+			t.Unlock()
+		case stop := <-t.stopChan:
+			if stop {
+				return
+			}
 		}
-		wg.Wait()
-		t.Unlock()
-	}
-}
-
-func (t *sharedTicker) expirer() {
-	var wg sync.WaitGroup
-	for range t.ticker.C {
-		t.Lock()
-		for c := range t.caches {
-			wg.Add(1)
-			go func(c *asyncCache) {
-				defer wg.Done()
-				c.expire()
-			}(c)
-		}
-		wg.Wait()
-		t.Unlock()
 	}
 }
 

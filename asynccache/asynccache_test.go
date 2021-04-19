@@ -201,6 +201,8 @@ func TestClose(t *testing.T) {
 			cnt++
 			return cnt, nil
 		},
+		EnableExpire:   true,
+		ExpireDuration: time.Second,
 	}
 	c := NewAsyncCache(op)
 
@@ -215,8 +217,7 @@ func TestClose(t *testing.T) {
 	v = c.GetOrSet("key", 10)
 	assert.Equal(t, v.(int), 3)
 
-	cc, _ := c.(interface{ Close() })
-	cc.Close()
+	c.Close()
 
 	time.Sleep(dur)
 	v = c.GetOrSet("key", 10)

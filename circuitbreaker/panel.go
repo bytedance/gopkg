@@ -185,7 +185,7 @@ func (t *sharedTicker) tick(ticker *time.Ticker) {
 			}
 			t.Unlock()
 		case stop := <-t.stopChan:
-			if stop == true {
+			if stop {
 				return
 			}
 		}
