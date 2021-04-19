@@ -17,12 +17,15 @@ package syncx
 import (
 	"runtime"
 	"sync"
+	"unsafe"
 
 	"github.com/bytedance/gopkg/internal/runtimex"
+
+	"golang.org/x/sys/cpu"
 )
 
 const (
-	cacheLineSize = 64
+	cacheLineSize = unsafe.Sizeof(cpu.CacheLinePad{})
 )
 
 var (
@@ -32,8 +35,8 @@ var (
 type RWMutex []rwMutexShard
 
 type rwMutexShard struct {
-	_ [cacheLineSize]byte
 	sync.RWMutex
+	_pad [cacheLineSize - unsafe.Sizeof(sync.RWMutex{})]byte
 }
 
 func init() {
