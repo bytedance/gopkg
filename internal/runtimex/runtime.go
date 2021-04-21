@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The runtime package uses //go:linkname to push a few functions into this
-// package but we still need a .s file so the Go tool does not pass -complete
-// to the go tool compile so the latter does not complain about Go functions
-// with no bodies.
-// See https://github.com/golang/go/issues/23311
+package runtimex
+
+import (
+	_ "unsafe" // for linkname
+)
+
+//go:linkname Fastrand runtime.fastrand
+func Fastrand() uint32
