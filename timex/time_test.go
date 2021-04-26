@@ -15,8 +15,11 @@
 package timex
 
 import (
+	"math"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNowStd(t *testing.T) {
@@ -24,14 +27,16 @@ func TestNowStd(t *testing.T) {
 	tNew := Now()
 	t.Log(tNew, tStd)
 	t.Log(tStd.Sub(tNew))
+	assert.True(t, math.Abs(tNew.Sub(tStd).Seconds()) < 1)
 }
 
 func TestNow(t *testing.T) {
 	tOld := Now()
-	time.Sleep(time.Millisecond)
+	time.Sleep(4 * time.Millisecond)
 	tNew := Now()
 	t.Log(tOld, tNew)
 	t.Log(tNew.Sub(tOld))
+	assert.True(t, tNew.After(tOld))
 }
 
 func BenchmarkNow(b *testing.B) {

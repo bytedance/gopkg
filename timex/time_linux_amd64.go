@@ -22,7 +22,11 @@ import (
 // Now uses COARSE version of clock_gettime on linux amd64, which is 2x faster.
 // The resolution is less precise, at the millisecond level.
 func Now() time.Time {
-	sec, nsec, mono := now()
+	var sec, mono int64
+	var nsec int32
+	systemstack(func() {
+		sec, nsec, mono = now()
+	})
 	mono -= startNano()
 	sec += unixToInternal - minWall
 	if uint64(sec)>>33 != 0 {
@@ -31,11 +35,11 @@ func Now() time.Time {
 	return *(*time.Time)(unsafe.Pointer(&timeStruct{hasMonotonic | uint64(sec)<<nsecShift | uint64(nsec), mono, time.Local}))
 }
 
-func walltime1() (sec int64, nsec int32)
-
-func nanotime1() int64
-
 func now() (sec int64, nsec int32, mono int64)
+
+//go:linkname systemstack runtime.systemstack
+//go:noescape
+func systemstack(fn func())
 
 type timeStruct struct {
 	// wall and ext encode the wall time seconds, wall time nanoseconds,

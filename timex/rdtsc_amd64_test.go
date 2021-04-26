@@ -16,7 +16,11 @@
 
 package timex
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func BenchmarkFenceRDTSC(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -41,4 +45,6 @@ func TestRDTSC(t *testing.T) {
 	v2 := RDTSC()
 	v3 := RDTSCP()
 	t.Log(v1, v2, v3)
+	assert.Greater(t, v3, v2)
+	assert.Greater(t, v2, v1)
 }

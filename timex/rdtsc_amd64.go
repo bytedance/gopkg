@@ -16,9 +16,8 @@ package timex
 
 import _ "unsafe"
 
-//go:linkname FenceRDTSC runtime.cputicks
-
 // FenceRDTSC is RDTSC call with fence.
+//go:linkname FenceRDTSC runtime.cputicks
 func FenceRDTSC() int64
 
 // RDTSC is used to get time stamp counter.
