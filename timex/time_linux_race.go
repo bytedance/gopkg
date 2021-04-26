@@ -12,41 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build linux,amd64,race
+
+// Race detector does not support systemstack, so if race is enabled, just use the standard version.
 package timex
 
-import (
-	"math"
-	"testing"
-	"time"
+import "time"
 
-	"github.com/stretchr/testify/assert"
-)
-
-func TestNowStd(t *testing.T) {
-	tStd := time.Now()
-	tNew := Now()
-	t.Log(tNew, tStd)
-	t.Log(tNew.Sub(tStd))
-	assert.True(t, math.Abs(tNew.Sub(tStd).Seconds()) < 1)
-}
-
-func TestNow(t *testing.T) {
-	tOld := Now()
-	time.Sleep(4 * time.Millisecond)
-	tNew := Now()
-	t.Log(tOld, tNew)
-	t.Log(tNew.Sub(tOld))
-	assert.True(t, tNew.After(tOld))
-}
-
-func BenchmarkNow(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		Now()
-	}
-}
-
-func BenchmarkStdNow(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		time.Now()
-	}
+// Now is just time.Now().
+func Now() time.Time {
+	return time.Now()
 }
