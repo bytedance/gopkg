@@ -24,7 +24,7 @@ noswitch:
 	SUBQ	$16, SP		// Space for results
 	ANDQ	$~15, SP	// Align for C code
 
-    // call REALTIME first
+	// call REALTIME first
 	MOVL	$5, DI // CLOCK_REALTIME_COARSE
 	LEAQ	0(SP), SI
 	MOVQ	runtime·vdsoClockgettimeSym(SB), AX
@@ -33,18 +33,18 @@ noswitch:
 	CALL	AX
 	// save REALTIME ret
 	MOVQ	0(SP), AX	// sec
-    MOVQ	8(SP), DX	// nsec
-    MOVQ    SP, R11     // save current SP
-    MOVQ	R12, SP		// Restore real SP
+	MOVQ	8(SP), DX	// nsec
+	MOVQ    SP, R11     // save current SP
+	MOVQ	R12, SP		// Restore real SP
 	MOVQ	AX, sec+0(FP)	// sec
-    MOVL	DX, nsec+8(FP)	// nsec
-    MOVQ    R11, SP     // Restore current SP
+	MOVL	DX, nsec+8(FP)	// nsec
+	MOVQ    R11, SP     // Restore current SP
 
-    // call MONOTONIC time
-    MOVL	$6, DI // CLOCK_MONOTONIC_COARSE
-    LEAQ	0(SP), SI
-    MOVQ	runtime·vdsoClockgettimeSym(SB), AX
-    CALL	AX
+	// call MONOTONIC time
+	MOVL	$6, DI // CLOCK_MONOTONIC_COARSE
+	LEAQ	0(SP), SI
+	MOVQ	runtime·vdsoClockgettimeSym(SB), AX
+	CALL	AX
 ret:
 	MOVQ	0(SP), AX	// sec
 	MOVQ	8(SP), DX	// nsec
@@ -59,18 +59,18 @@ fallback:
 	MOVQ	$SYS_clock_gettime, AX
 	SYSCALL
 	// save REALTIME ret
-    MOVQ	0(SP), AX	// sec
-    MOVQ	8(SP), DX	// nsec
-    MOVQ    SP, R11     // save current SP
-    MOVQ	R12, SP		// Restore real SP
-    MOVQ	AX, sec+0(FP)	// sec
-    MOVL	DX, nsec+8(FP)	// nsec
-    MOVQ    R11, SP     // Restore current SP
+	MOVQ	0(SP), AX	// sec
+	MOVQ	8(SP), DX	// nsec
+	MOVQ    SP, R11     // save current SP
+	MOVQ	R12, SP		// Restore real SP
+	MOVQ	AX, sec+0(FP)	// sec
+	MOVL	DX, nsec+8(FP)	// nsec
+	MOVQ    R11, SP     // Restore current SP
 
-    MOVL	$6, DI // CLOCK_MONOTONIC_COARSE
-    LEAQ	0(SP), SI
-    MOVQ	$SYS_clock_gettime, AX
-    SYSCALL
+	MOVL	$6, DI // CLOCK_MONOTONIC_COARSE
+	LEAQ	0(SP), SI
+	MOVQ	$SYS_clock_gettime, AX
+	SYSCALL
 	JMP	ret
 
 TEXT ·startNano(SB),NOSPLIT,$0-8
