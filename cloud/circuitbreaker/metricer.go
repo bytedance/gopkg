@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bytedance/gopkg/syncx"
+	"github.com/bytedance/gopkg/lang/syncx"
 )
 
 // bucket holds counts of failures and successes

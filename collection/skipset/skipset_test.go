@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/bytedance/gopkg/fastrand"
+	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 func Example() {

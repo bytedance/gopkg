@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bytedance/gopkg/metainfo"
+	"github.com/bytedance/gopkg/cloud/metainfo"
 )
 
 func TestWithValue(t *testing.T) {

@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bytedance/gopkg/metainfo"
+	"github.com/bytedance/gopkg/cloud/metainfo"
 )
 
 func TestHasMetaInfo(t *testing.T) {

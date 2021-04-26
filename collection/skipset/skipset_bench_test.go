@@ -20,7 +20,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/bytedance/gopkg/fastrand"
+	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 const initsize = 1 << 10 // for `contains` `1Remove9Add90Contains` `1Range9Remove90Add900Contains`

@@ -17,7 +17,7 @@ package skipset
 import (
 	_ "unsafe" // for linkname
 
-	"github.com/bytedance/gopkg/fastrand"
+	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 const (
