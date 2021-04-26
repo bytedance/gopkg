@@ -20,7 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/bytedance/gopkg/logger"
+	"github.com/bytedance/gopkg/util/logger"
 )
 
 var workerPool sync.Pool
