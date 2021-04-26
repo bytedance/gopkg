@@ -40,7 +40,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/bytedance/gopkg/struct/skipset"
+	"github.com/bytedance/gopkg/collection/skipset"
 )
 
 func main() {
