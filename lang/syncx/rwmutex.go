@@ -32,6 +32,7 @@ var (
 	shardsLen int
 )
 
+// RWMutex is a p-shard mutex, which has better performance when there's much more read than write.
 type RWMutex []rwMutexShard
 
 type rwMutexShard struct {
@@ -43,6 +44,7 @@ func init() {
 	shardsLen = runtime.GOMAXPROCS(0)
 }
 
+// NewRWMutex creates a new RWMutex.
 func NewRWMutex() RWMutex {
 	return make([]rwMutexShard, shardsLen)
 }

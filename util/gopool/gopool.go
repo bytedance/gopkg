@@ -20,7 +20,7 @@ import (
 	"sync"
 )
 
-// defaultPool 不应该被修改或者 Closed，所以保护起来
+// defaultPool is the global default pool.
 var defaultPool Pool
 
 var poolMap sync.Map
@@ -29,7 +29,7 @@ func init() {
 	defaultPool = NewPool("gopool.DefaultPool", 10000, NewConfig())
 }
 
-// Go 作为 go 关键字的替代品，拥有 panic recover 的作用
+// Go is an alternative to the go keyword, which is able to recover panic.
 // gopool.Go(func(arg interface{}){
 //     ...
 // }(nil))
@@ -37,23 +37,24 @@ func Go(f func()) {
 	CtxGo(context.Background(), f)
 }
 
-// 建议使用带 ctx 前缀的，打日志时可以带上 logid，方便调用链追踪
+// CtxGo is preferred than Go.
 func CtxGo(ctx context.Context, f func()) {
 	defaultPool.CtxGo(ctx, f)
 }
 
-// 不建议更改大小，容易造成全局其它调用者的问题
+// SetCap is not recommended to be called, this func changes the global pool's capacity which will affect other callers.
 func SetCap(cap int32) {
 	defaultPool.SetCap(cap)
 }
 
-// 设置默认 pool panic 情况下的 handler
+// SetPanicHandler sets the panic handler for the global pool.
 func SetPanicHandler(f func(context.Context, interface{})) {
 	defaultPool.SetPanicHandler(f)
 }
 
-// 把 Pool 注册到全局的 map 里面，可以通过 GetPool 获取
-// 如果已经注册过会返回 error
+// RegisterPool registers a new pool to the global map.
+// GetPool can be used to get the registered pool by name.
+// returns error if the same name is registered.
 func RegisterPool(p Pool) error {
 	_, loaded := poolMap.LoadOrStore(p.Name(), p)
 	if loaded {
@@ -62,8 +63,12 @@ func RegisterPool(p Pool) error {
 	return nil
 }
 
-// 通过 name 获取对应的 Pool
+// GetPool gets the registered pool by name.
+// Returns nil if not registered.
 func GetPool(name string) Pool {
-	p, _ := poolMap.Load(name)
+	p, ok := poolMap.Load(name)
+	if !ok {
+		return nil
+	}
 	return p.(Pool)
 }

@@ -40,11 +40,10 @@ func init() {
 	taskPool.New = newTask
 }
 
-// ctx 主要是为了打日志的时候用，这样如果有 logid 的话调用链追踪可以查找到
 type task struct {
 	ctx context.Context
 	f   func()
-	// 指向下一个 task 的指针
+
 	next *task
 }
 
@@ -127,10 +126,10 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 	}
 	p.taskLists[idx].Unlock()
 	atomic.AddInt32(&p.taskCount, 1)
-	// 满足以下两个条件：
-	// 1. task 数量大于阈值
-	// 2. 目前的 worker 数量小于上限 p.cap
-	// 或者目前没有 worker
+	// The following two conditions are met:
+	// 1. the number of tasks is greater than the threshold.
+	// 2. The current number of workers is less than the upper limit p.cap.
+	// or there are currently no workers.
 	if (atomic.LoadInt32(&p.taskCount) >= p.config.ScaleThreshold && p.WorkerCount() < atomic.LoadInt32(&p.cap)) || p.WorkerCount() == 0 {
 		p.incWorkerCount()
 		w := workerPool.Get().(*worker)
@@ -139,7 +138,7 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 	}
 }
 
-// SetPanicHandler 这里的 Handler 会在 panic 被 recover 之后执行
+// SetPanicHandler the func here will be called after the panic has been recovered.
 func (p *pool) SetPanicHandler(f func(context.Context, interface{})) {
 	p.panicHandler = f
 }

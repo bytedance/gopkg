@@ -35,7 +35,6 @@ func init() {
 
 // calculates which pool to get from
 func calcIndex(size int) int {
-	// 针对 0 要特判
 	if size == 0 {
 		return 0
 	}
@@ -61,6 +60,7 @@ func Malloc(size int, capacity ...int) []byte {
 	return ret
 }
 
+// Free should be called when the buf is no longer used.
 func Free(buf []byte) {
 	size := cap(buf)
 	if !isPowerOfTwo(size) {

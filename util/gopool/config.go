@@ -18,6 +18,7 @@ const (
 	defaultScalaThreshold = 1
 )
 
+// Config is used to config pool.
 type Config struct {
 	// threshold for scale.
 	// new goroutine is created if len(task chan) > ScaleThreshold.
@@ -25,6 +26,7 @@ type Config struct {
 	ScaleThreshold int32
 }
 
+// NewConfig creates a default Config.
 func NewConfig() *Config {
 	c := &Config{
 		ScaleThreshold: defaultScalaThreshold,
