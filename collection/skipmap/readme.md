@@ -6,8 +6,6 @@
 
 skipmap is a high-performance concurrent map based on skip list. In typical pattern(one million operations, 90%LOAD 9%STORE 1%DELETE), the skipmap up to 3x ~ 10x faster than the built-in sync.Map.
 
-The main idea behind the skipmap is [A Simple Optimistic Skiplist Algorithm](<https://people.csail.mit.edu/shanir/publications/LazySkipList.pdf>).
-
 Different from the sync.Map, the items in the skipmap are always sorted, and the `Load` and `Range` operations are wait-free (A goroutine is guaranteed to complete a operation as long as it keeps taking steps, regardless of the activity of other goroutines).
 
 
@@ -34,8 +32,6 @@ In these situations, `sync.Map` is better
 
 
 ## QuickStart
-
-See [Go doc](https://pkg.go.dev/github.com/zhangyunhao116/skipmap) for more information.
 
 ```go
 package main
