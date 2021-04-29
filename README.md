@@ -1,6 +1,6 @@
 # gopkg
 
-`gopkg` is a universal utility collection for Go.
+`gopkg` is a universal utility collection for Go, it complements offerings such as Boost, Better std, Cloud tools.
 
 ## Table of Contents
 
@@ -11,7 +11,7 @@
 
 ## Introduction
 
-`gopkg` is a universal utility collection for Go. It is migrated from the internal code base at ByteDance and has been extensively adopted in production.
+`gopkg` is a universal utility collection for Go, it complements offerings such as Boost, Better std, Cloud tools. It is migrated from the internal code base at ByteDance and has been extensively adopted in production.
 
 We depend on the same code(this repo) in our production environment.
 
