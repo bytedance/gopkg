@@ -1,3 +1,0 @@
-# asynccache
-
-`asynccache` refreshes periodically.

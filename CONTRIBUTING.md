@@ -76,7 +76,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 3. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the bytedance/gopkg repo.
 4. In your forked repository, make your changes in a new git branch:
     ```
-    git checkout -b my-fix-branch develop
+    git checkout -b bugfix/security_bug develop
     ```
 5. Create your patch, including appropriate test cases.
 6. Follow our [Style Guides](#code-style-guides).
@@ -84,9 +84,13 @@ Before you submit your Pull Request (PR) consider the following guidelines:
    Adherence to these conventions is necessary because release notes are automatically generated from these messages.
 8. Push your branch to GitHub:
     ```
-    git push origin my-fix-branch
+    git push origin bugfix/security_bug
     ```
 9. In GitHub, send a pull request to `gopkg:develop`
+
+Note: you must use one of `optimize/feature/bugfix/doc/ci/test/refactor` following a slash(`/`) as the branch prefix.
+
+Your pr title and commit message should follow https://www.conventionalcommits.org/.
 
 ## Contribution Prerequisites
 - Our development environment keeps up with [Go Official](https://golang.org/project/).
@@ -95,9 +99,9 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 - Maybe you need familiar with [Actions](https://github.com/features/actions)(our default workflow tool).
 
 ## Code Style Guides
-Also see [Pingcap General advice](https://pingcap.github.io/style-guide/general.html).
+See [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments).
 
 Good resources:
 - [Effective Go](https://golang.org/doc/effective_go)
-- [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+- [Pingcap General advice](https://pingcap.github.io/style-guide/general.html)
 - [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
