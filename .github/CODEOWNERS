@@ -1,0 +1,23 @@
+# global code owners
+*       @PureWhiteWu @zhangyunhao116
+
+# cache code owners
+/cache/asynccache @PureWhiteWu @zhangyunhao116
+
+# cloud code owners
+/cloud/circuitbreaker @PureWhiteWu @zhangyunhao116
+/cloud/metainfo @lsjbd @zhangyunhao116
+
+# collection code owners
+/collection/hashset @lyeeeeee @PureWhiteWu
+/collection/skipmap @zhangyunhao116 @PureWhiteWu
+/collection/skipset @zhangyunhao116 @PureWhiteWu
+
+# lang code owners
+/lang/fastrand @zhangyunhao116 @PureWhiteWu
+/lang/mcache @PureWhiteWu @zhangyunhao116
+/lang/syncx @PureWhiteWu @zhangyunhao116
+
+# util code owners
+/util/gopool @PureWhiteWu @zhangyunhao116
+/util/logger @PureWhiteWu @zhangyunhao116
