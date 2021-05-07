@@ -7,6 +7,7 @@
 - [Introduction](#Introduction)
 - [Catalogs](#Catalogs)
 - [Releases](#Releases)
+- [How To Use](#How-To-Use)
 - [License](#License)
 
 ## Introduction
@@ -27,6 +28,10 @@ We depend on the same code(this repo) in our production environment.
 
 `gopkg` recommends users to "live-at-head" (update to the latest commit from the main branch as often as possible).
 We develop at `develop` branch and will only merge to `main` when `develop` is stable.
+
+## How To Use
+
+You can use `go get -u github.com/bytedance/gopkg@main` to get or update `gopkg`.
 
 ## License
 
