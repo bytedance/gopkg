@@ -17,6 +17,7 @@
 /lang/fastrand @zhangyunhao116 @PureWhiteWu
 /lang/mcache @PureWhiteWu @zhangyunhao116
 /lang/syncx @PureWhiteWu @zhangyunhao116
+/lang/stringx @kaka19ace
 
 # util code owners
 /util/gopool @PureWhiteWu @zhangyunhao116
