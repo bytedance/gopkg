@@ -15,20 +15,25 @@
 package gopool
 
 import (
-	"fmt"
-	"math/rand"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 const benchmarkTimes = 10000
 
-func testFunc() {
-	for i := 0; i < benchmarkTimes; i++ {
-		rand.Intn(benchmarkTimes)
+func DoCopyStack(a, b int) int {
+	if fastrand.Uint32n(100) == 0 {
+		return 0
 	}
+	return DoCopyStack(1, 2)
+}
+
+func testFunc() {
+	DoCopyStack(1, 2)
 }
 
 func testPanicFunc() {
@@ -58,7 +63,6 @@ func TestPoolPanic(t *testing.T) {
 }
 
 func BenchmarkPool(b *testing.B) {
-	fmt.Println(runtime.GOMAXPROCS(0))
 	config := NewConfig()
 	config.ScaleThreshold = 1
 	p := NewPool("benchmark", int32(runtime.GOMAXPROCS(0)), config)
