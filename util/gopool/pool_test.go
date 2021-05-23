@@ -19,21 +19,19 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-
-	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 const benchmarkTimes = 10000
 
 func DoCopyStack(a, b int) int {
-	if fastrand.Uint32n(100) == 0 {
-		return 0
+	if b < 100 {
+		return DoCopyStack(0, b+1)
 	}
-	return DoCopyStack(1, 2)
+	return 0
 }
 
 func testFunc() {
-	DoCopyStack(1, 2)
+	DoCopyStack(0, 0)
 }
 
 func testPanicFunc() {
