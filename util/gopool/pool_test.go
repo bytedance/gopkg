@@ -15,8 +15,6 @@
 package gopool
 
 import (
-	"fmt"
-	"math/rand"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -25,10 +23,15 @@ import (
 
 const benchmarkTimes = 10000
 
-func testFunc() {
-	for i := 0; i < benchmarkTimes; i++ {
-		rand.Intn(benchmarkTimes)
+func DoCopyStack(a, b int) int {
+	if b < 100 {
+		return DoCopyStack(0, b+1)
 	}
+	return 0
+}
+
+func testFunc() {
+	DoCopyStack(0, 0)
 }
 
 func testPanicFunc() {
@@ -58,7 +61,6 @@ func TestPoolPanic(t *testing.T) {
 }
 
 func BenchmarkPool(b *testing.B) {
-	fmt.Println(runtime.GOMAXPROCS(0))
 	config := NewConfig()
 	config.ScaleThreshold = 1
 	p := NewPool("benchmark", int32(runtime.GOMAXPROCS(0)), config)
