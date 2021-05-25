@@ -90,7 +90,7 @@ type Options struct {
 	EnableShardP bool
 
 	// for test
-	now func() time.Time
+	Now func() time.Time
 }
 
 const (

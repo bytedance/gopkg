@@ -52,8 +52,8 @@ type breaker struct {
 
 // newBreaker creates a base breaker with a specified options
 func newBreaker(options Options) (*breaker, error) {
-	if options.now == nil {
-		options.now = time.Now
+	if options.Now == nil {
+		options.Now = time.Now
 	}
 
 	if options.BucketTime <= 0 {
@@ -90,7 +90,7 @@ func newBreaker(options Options) (*breaker, error) {
 	breaker := &breaker{
 		rw:       syncx.NewRWMutex(),
 		metricer: window,
-		now:      options.now,
+		now:      options.Now,
 		state:    Closed,
 	}
 
@@ -103,7 +103,7 @@ func newBreaker(options Options) (*breaker, error) {
 		ShouldTrip:                options.ShouldTrip,
 		ShouldTripWithKey:         options.ShouldTripWithKey,
 		BreakerStateChangeHandler: options.BreakerStateChangeHandler,
-		now:                       options.now,
+		Now:                       options.Now,
 	}
 
 	return breaker, nil
@@ -157,7 +157,7 @@ func (b *breaker) error(isTimeout bool, trip TripFunc) {
 			if b.options.BreakerStateChangeHandler != nil {
 				go b.options.BreakerStateChangeHandler(HalfOpen, Open, b.metricer)
 			}
-			b.openTime = time.Now()
+			b.openTime = b.now()
 			atomic.StoreInt32((*int32)(&b.state), int32(Open))
 		}
 		b.rw.Unlock()
@@ -170,7 +170,7 @@ func (b *breaker) error(isTimeout bool, trip TripFunc) {
 				if b.options.BreakerStateChangeHandler != nil {
 					go b.options.BreakerStateChangeHandler(Closed, Open, b.metricer)
 				}
-				b.openTime = time.Now()
+				b.openTime = b.now()
 				atomic.StoreInt32((*int32)(&b.state), int32(Open))
 			}
 			b.rw.Unlock()
@@ -211,7 +211,7 @@ func (b *breaker) isAllowed() bool {
 	rwx.Lock()
 	switch b.State() {
 	case Open:
-		now := time.Now()
+		now := b.now()
 		if b.openTime.Add(b.options.CoolingTimeout).After(now) {
 			rwx.Unlock()
 			return false
@@ -233,7 +233,7 @@ func (b *breaker) isAllowed() bool {
 			return false
 		}
 	case HalfOpen:
-		now := time.Now()
+		now := b.now()
 		if b.lastRetryTime.Add(b.options.DetectTimeout).After(now) {
 			rwx.Unlock()
 			return false
