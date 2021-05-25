@@ -89,8 +89,8 @@ type Options struct {
 	// but will consume more memory
 	EnableShardP bool
 
-	// for test
-	now func() time.Time
+	// Default value is time.Now, caller may use some high-performance custom time now func here
+	Now func() time.Time
 }
 
 const (
