@@ -47,7 +47,7 @@ type breaker struct {
 
 	options Options
 
-	now func() time.Time // for test
+	now func() time.Time // Default value is time.Now, caller may use some high-performance custom time now func here
 }
 
 // newBreaker creates a base breaker with a specified options
