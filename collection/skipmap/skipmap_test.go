@@ -21,6 +21,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 func TestSkipMap(t *testing.T) {
@@ -130,6 +132,48 @@ func TestSkipMap(t *testing.T) {
 
 	if m.Len() != 999 || int(count) != m.Len() {
 		t.Fatal("fail")
+	}
+	// Correctness 2.
+	var m1 sync.Map
+	m2 := NewUint32()
+	var v1, v2 interface{}
+	var ok1, ok2 bool
+	for i := 0; i < 100000; i++ {
+		rd := fastrand.Uint32n(10)
+		r1, r2 := fastrand.Uint32n(100), fastrand.Uint32n(100)
+		if rd == 0 {
+			m1.Store(r1, r2)
+			m2.Store(r1, r2)
+		} else if rd == 1 {
+			v1, ok1 = m1.LoadAndDelete(r1)
+			v2, ok2 = m2.LoadAndDelete(r1)
+			if ok1 != ok2 || v1 != v2 {
+				t.Fatal(rd, v1, ok1, v2, ok2)
+			}
+		} else if rd == 2 {
+			v1, ok1 = m1.LoadOrStore(r1, r2)
+			v2, ok2 = m2.LoadOrStore(r1, r2)
+			if ok1 != ok2 || v1 != v2 {
+				t.Fatal(rd, v1, ok1, v2, ok2, "input -> ", r1, r2)
+			}
+		} else if rd == 3 {
+			m1.Delete(r1)
+			m2.Delete(r1)
+		} else if rd == 4 {
+			m2.Range(func(key uint32, value interface{}) bool {
+				v, ok := m1.Load(key)
+				if !ok || v != value {
+					t.Fatal(v, ok, key, value)
+				}
+				return true
+			})
+		} else {
+			v1, ok1 = m1.Load(r1)
+			v2, ok2 = m2.Load(r1)
+			if ok1 != ok2 || v1 != v2 {
+				t.Fatal(rd, v1, ok1, v2, ok2)
+			}
+		}
 	}
 }
 
