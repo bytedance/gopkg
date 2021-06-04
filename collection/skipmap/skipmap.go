@@ -281,7 +281,7 @@ func (s *Int64Map) LoadOrStore(key int64, value interface{}) (actual interface{}
 	loadedval, ok := s.Load(key)
 	if !ok {
 		s.Store(key, value)
-		return nil, false
+		return value, false
 	}
 	return loadedval, true
 }
