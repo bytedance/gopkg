@@ -16,6 +16,7 @@ package metainfo_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -98,4 +99,56 @@ func TestHTTPHeader(t *testing.T) {
 	})
 	assert(t, len(kvs) == 1)
 	assert(t, kvs["hello"] == "world")
+}
+
+func BenchmarkHTTPHeaderToCGIVariable(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = metainfo.HTTPHeaderToCGIVariable(metainfo.HTTPPrefixPersistent + "hello-world")
+	}
+}
+
+func BenchmarkCGIVariableToHTTPHeader(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = metainfo.CGIVariableToHTTPHeader(metainfo.PrefixPersistent + "HELLO_WORLD")
+	}
+}
+
+func BenchmarkFromHTTPHeader(b *testing.B) {
+	for _, cnt := range []int{10, 20, 50, 100} {
+		hd := make(metainfo.HTTPHeader)
+		hd.Set("content-type", "test")
+		hd.Set("content-length", "12345")
+		for i := 0; len(hd) < cnt; i++ {
+			hd.Set(metainfo.HTTPPrefixTransient+fmt.Sprintf("tk%d", i), fmt.Sprintf("tv-%d", i))
+			hd.Set(metainfo.HTTPPrefixPersistent+fmt.Sprintf("pk%d", i), fmt.Sprintf("pv-%d", i))
+		}
+		ctx := context.Background()
+		fun := fmt.Sprintf("FromHTTPHeader-%d", cnt)
+		b.Run(fun, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = metainfo.FromHTTPHeader(ctx, hd)
+			}
+		})
+	}
+}
+
+func BenchmarkToHTTPHeader(b *testing.B) {
+	for _, cnt := range []int{10, 20, 50, 100} {
+		ctx, _, _ := initMetaInfo(cnt)
+		fun := fmt.Sprintf("ToHTTPHeader-%d", cnt)
+		b.Run(fun, func(b *testing.B) {
+			hd := make(metainfo.HTTPHeader)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				metainfo.ToHTTPHeader(ctx, hd)
+			}
+		})
+	}
 }
