@@ -16,29 +16,20 @@
 package xxhash3
 
 import (
-	"github.com/bytedance/gopkg/internal/runtimex"
-	"golang.org/x/sys/cpu"
 	"math/bits"
 	"unsafe"
-)
 
-func accumAVX2(acc *[8]uint64, xinput, xsecret unsafe.Pointer, len uintptr)
-func accumSSE2(acc *[8]uint64, xinput, xsecret unsafe.Pointer, len uintptr)
-
-var (
-	avx2 = cpu.X86.HasAVX2
-	sse2 = cpu.X86.HasSSE2
-	xacc = [8]uint64{}
+	"github.com/bytedance/gopkg/internal/runtimex"
 )
 
 // Hash returns the hash value of the byte slice in 64bits.
 func Hash(data []byte) uint64 {
-	fn := xxh3HashLarge
+	funcPointer := hashSmall
 
-	if len(data) <= 16 {
-		fn = xxh3HashSmall
+	if len(data) > 16 {
+		funcPointer = hashLarge
 	}
-	return fn(*(*unsafe.Pointer)(unsafe.Pointer(&data)), len(data))
+	return hashfunc[funcPointer](*(*unsafe.Pointer)(unsafe.Pointer(&data)), len(data))
 
 }
 
@@ -145,32 +136,4 @@ func xxh3HashLarge(xinput unsafe.Pointer, l int) (acc uint64) {
 	acc += mix(xacc[6]^xsecret_059, xacc[7]^xsecret_067)
 
 	return xxh3Avalanche(acc)
-}
-
-func mix(a, b uint64) uint64 {
-	hi, lo := bits.Mul64(a, b)
-	return hi ^ lo
-}
-func xxh3RRMXMX(h64 uint64, length uint64) uint64 {
-	h64 ^= bits.RotateLeft64(h64, 49) ^ bits.RotateLeft64(h64, 24)
-	h64 *= 0x9fb21c651e98df25
-	h64 ^= (h64 >> 35) + length
-	h64 *= 0x9fb21c651e98df25
-	h64 ^= (h64 >> 28)
-	return h64
-}
-
-func xxh64Avalanche(h64 uint64) uint64 {
-	h64 *= prime64_2
-	h64 ^= h64 >> 29
-	h64 *= prime64_3
-	h64 ^= h64 >> 32
-	return h64
-}
-
-func xxh3Avalanche(x uint64) uint64 {
-	x ^= x >> 37
-	x *= 0x165667919e3779f9
-	x ^= x >> 32
-	return x
 }

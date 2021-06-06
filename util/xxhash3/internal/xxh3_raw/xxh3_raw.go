@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package xxh3_fv1
+package xxh3_raw
 
 import (
 	"math/bits"

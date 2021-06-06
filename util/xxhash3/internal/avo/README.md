@@ -1,1 +1,1 @@
-run ./build.sh to generate the assembly file
+run  to generate the assembly file

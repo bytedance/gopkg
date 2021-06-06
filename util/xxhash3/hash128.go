@@ -16,18 +16,21 @@
 package xxhash3
 
 import (
-	"github.com/bytedance/gopkg/internal/runtimex"
 	"math/bits"
 	"unsafe"
+
+	"github.com/bytedance/gopkg/internal/runtimex"
 )
 
 // Hash128 returns the hash value of the byte slice in 128bits.
 func Hash128(data []byte) [2]uint64 {
-	fn := xxh3HashLarge128
-	if len(data) <= 16 {
-		fn = xxh3HashSmall128
+	funcPointer := hashSmall
+
+	if len(data) > 16 {
+		funcPointer = hashLarge
 	}
-	return fn(*(*unsafe.Pointer)(unsafe.Pointer(&data)), len(data))
+	return hashfunc128[funcPointer](*(*unsafe.Pointer)(unsafe.Pointer(&data)), len(data))
+
 }
 
 // Hash128String returns the hash value of the string in 128bits.
