@@ -19,6 +19,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/bytedance/gopkg/internal/runtimex"
 )
 
 type Pool struct {
@@ -37,6 +39,17 @@ type Pool struct {
 	// NoGC any objects in this Pool.
 	NoGC bool
 }
+
+// noCopy may be embedded into structs which must not be copied
+// after the first use.
+//
+// See https://golang.org/issues/8005#issuecomment-190753527
+// for details.
+type noCopy struct{}
+
+// Lock is a no-op used by -copylocks checker from `go vet`.
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}
 
 const blockSize = 256
 
@@ -83,7 +96,7 @@ func (p *Pool) Put(x interface{}) {
 	l.private[l.pidx] = x
 	l.pidx++
 	x = nil
-	runtime_procUnpin()
+	runtimex.Unpin()
 }
 
 // Get selects an arbitrary item from the Pool, removes it from the
@@ -119,7 +132,7 @@ func (p *Pool) Get() (x interface{}) {
 			l.private[l.pidx] = nil
 		}
 	}
-	runtime_procUnpin()
+	runtimex.Unpin()
 	if x == nil && p.New != nil {
 		atomic.AddInt32(&p.newSize, 1)
 		x = p.New()
@@ -145,7 +158,7 @@ func (p *Pool) getSlow(pid int, idx int) *block {
 // returns poolLocal pool for the P and the P's id.
 // Caller must call runtime_procUnpin() when done with the pool.
 func (p *Pool) pin() (*poolLocal, int) {
-	pid := runtime_procPin()
+	pid := runtimex.Pin()
 	// In pinSlow we store to local and then to localSize, here we load in opposite order.
 	// Since we've disabled preemption, GC cannot happen in between.
 	// Thus here we must observe local at least as large localSize.
@@ -161,10 +174,10 @@ func (p *Pool) pin() (*poolLocal, int) {
 func (p *Pool) pinSlow() (*poolLocal, int) {
 	// Retry under the mutex.
 	// Can not lock the mutex while pinned.
-	runtime_procUnpin()
+	runtimex.Unpin()
 	allPoolsMu.Lock()
 	defer allPoolsMu.Unlock()
-	pid := runtime_procPin()
+	pid := runtimex.Pin()
 	// poolCleanup won't be called while we are pinned.
 	s := p.localSize
 	l := p.local
@@ -182,12 +195,11 @@ func (p *Pool) pinSlow() (*poolLocal, int) {
 	return &local[pid], pid
 }
 
-// TODO:
-// 1. 标记 newSize tag, 如果该次存在 newSize, 则跳过 gc
-// 2. 计算当前 size, 计为 newSize
-// 3. if newSize < oldSize; then oldSize=newSize; return
-// 4. else gc oldSize/2; oldSize = newSize - oldSize/2
-// 5. gc 方式为直接扔掉若干 poolLocal
+// GC will follow these rules：
+// 1. Mark the tag `newSize`, if `newSize` exists this time, skip GC.
+// 2. Calculate the current size, mark as `newSize`.
+// 3. if `newSize`  < `oldSize`, skip GC.
+// 4. GC size is oldSize/2, the real GC is to throw away a few poolLocals directly.
 func (p *Pool) gc() {
 	if p.NoGC {
 		return
@@ -232,10 +244,11 @@ var (
 	allPools []*Pool
 )
 
+// GC will be executed every 4 cycles
 func poolCleanup() {
 	runtime_poolCleanup()
 	period++
-	if period|0x7 != 0 {
+	if period&0x4 != 0 {
 		return
 	}
 	// This function is called with the world stopped, at the beginning of a garbage collection.
@@ -251,6 +264,8 @@ func poolCleanup() {
 }
 
 func init() {
+	// FIXME: The linkname here is risky.
+	//  If Go renames these func officially, we need to synchronize here, otherwise it may cause OOM.
 	runtime_registerPoolCleanup(poolCleanup)
 }
 

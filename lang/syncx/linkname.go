@@ -17,28 +17,9 @@ package syncx
 import _ "unsafe"
 
 //go:noescape
-//go:linkname runtime_procPin runtime.procPin
-func runtime_procPin() int
-
-//go:noescape
-//go:linkname runtime_procUnpin runtime.procUnpin
-func runtime_procUnpin()
-
-//go:noescape
 //go:linkname runtime_registerPoolCleanup sync.runtime_registerPoolCleanup
 func runtime_registerPoolCleanup(cleanup func())
 
 //go:noescape
 //go:linkname runtime_poolCleanup sync.poolCleanup
 func runtime_poolCleanup()
-
-// noCopy may be embedded into structs which must not be copied
-// after the first use.
-//
-// See https://golang.org/issues/8005#issuecomment-190753527
-// for details.
-type noCopy struct{}
-
-// Lock is a no-op used by -copylocks checker from `go vet`.
-func (*noCopy) Lock()   {}
-func (*noCopy) Unlock() {}
