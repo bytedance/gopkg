@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build ignore
 package main
 
 import (
@@ -21,6 +22,7 @@ import (
 )
 
 func SSE2() {
+
 	primeData := GLOBL("prime_sse", RODATA|NOPTR)
 	DATA(0, U32(2654435761))
 	DATA(4, U32(2654435761))

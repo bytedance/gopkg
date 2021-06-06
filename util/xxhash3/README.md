@@ -80,7 +80,7 @@ acc ^= acc >> 32
 ```
 package main
 
-import "github.com/lyeeeeee/xxhash3"
+import "github.com/bytedance/gopkg/util/xxhash3"
 
 func main() {
 	println(xxhash3.HashString("hello world!"))

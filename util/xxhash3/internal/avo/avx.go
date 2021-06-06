@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build ignore
 package main
 
 import (
@@ -21,6 +22,7 @@ import (
 )
 
 func AVX2() {
+
 	primeData := GLOBL("prime_avx", RODATA|NOPTR)
 	DATA(0, U32(2654435761))
 	TEXT("accumAVX2", NOSPLIT, "func(acc *[8]uint64, xinput, xsecret *byte, len uint64)")
