@@ -19,6 +19,54 @@ import (
 	"testing"
 )
 
+func TestSyncXPool(t *testing.T) {
+	var pool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 1024)
+		},
+	}
+	for i := 0; i < 1024; i++ {
+		b := pool.Get().([]byte)
+		pool.Put(b)
+	}
+
+	var bs = make([][]byte, p)
+	for i := 0; i < 1024; i++ {
+		for i := 0; i < p; i++ {
+			bs[i] = pool.Get().([]byte)
+		}
+		for i := 0; i < p; i++ {
+			pool.Put(bs[i])
+		}
+	}
+}
+
+func TestRaceSyncXPool(t *testing.T) {
+	var pool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 1024)
+		},
+	}
+	parallel := 8
+	var wg sync.WaitGroup
+	wg.Add(parallel)
+	for i := 0; i < parallel; i++ {
+		go func() {
+			defer wg.Done()
+			var bs = make([][]byte, p)
+			for i := 0; i < 8; i++ {
+				for i := 0; i < p; i++ {
+					bs[i] = pool.Get().([]byte)
+				}
+				for i := 0; i < p; i++ {
+					pool.Put(bs[i])
+				}
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 var p = 1024
 
 func BenchmarkSyncPool(b *testing.B) {

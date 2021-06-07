@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build !race
+
 package syncx
 
 import (
@@ -248,7 +250,7 @@ var (
 func poolCleanup() {
 	runtime_poolCleanup()
 	period++
-	if period&0x4 != 0 {
+	if period&0x4 == 0 {
 		return
 	}
 	// This function is called with the world stopped, at the beginning of a garbage collection.
