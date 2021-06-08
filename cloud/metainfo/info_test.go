@@ -332,6 +332,12 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithValue(ctx, "key", "val")
 		}
+	case "WithValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ctx = metainfo.WithValue(ctx, "key", "val")
+		}
 	case "DelValue":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -356,11 +362,34 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithPersistentValue(ctx, "key", "val")
 		}
+	case "WithPersistentValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ctx = metainfo.WithPersistentValue(ctx, "key", "val")
+		}
+		_ = ctx
 	case "DelPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.DelPersistentValue(ctx, "key")
+		}
+	case "SaveMetaInfoToMap":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			m := make(map[string]string)
+			metainfo.SaveMetaInfoToMap(ctx, m)
+		}
+	case "SetMetaInfoFromMap":
+		m := make(map[string]string)
+		c := context.Background()
+		metainfo.SaveMetaInfoToMap(ctx, m)
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.SetMetaInfoFromMap(c, m)
 		}
 	}
 }
@@ -400,6 +429,15 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.WithValue(ctx, "key", "val")
 			}
 		})
+	case "WithValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			tmp := ctx
+			for pb.Next() {
+				tmp = metainfo.WithValue(tmp, "key", "val")
+			}
+		})
 	case "DelValue":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -432,12 +470,41 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.WithPersistentValue(ctx, "key", "val")
 			}
 		})
+	case "WithPersistentValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			tmp := ctx
+			for pb.Next() {
+				tmp = metainfo.WithPersistentValue(tmp, "key", "val")
+			}
+		})
 	case "DelPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				_ = metainfo.DelPersistentValue(ctx, "key")
+			}
+		})
+	case "SaveMetaInfoToMap":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				m := make(map[string]string)
+				metainfo.SaveMetaInfoToMap(ctx, m)
+			}
+		})
+	case "SetMetaInfoFromMap":
+		m := make(map[string]string)
+		c := context.Background()
+		metainfo.SaveMetaInfoToMap(ctx, m)
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = metainfo.SetMetaInfoFromMap(c, m)
 			}
 		})
 	}
@@ -449,11 +516,15 @@ func BenchmarkAll(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
 		"WithPersistentValue",
+		"WithPersistentValueAcc",
 		"DelPersistentValue",
+		"SaveMetaInfoToMap",
+		"SetMetaInfoFromMap",
 	}
 	for _, api := range APIs {
 		api := api
@@ -467,11 +538,15 @@ func BenchmarkAllParallel(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
 		"WithPersistentValue",
+		"WithPersistentValueAcc",
 		"DelPersistentValue",
+		"SaveMetaInfoToMap",
+		"SetMetaInfoFromMap",
 	}
 	for _, api := range APIs {
 		api := api
