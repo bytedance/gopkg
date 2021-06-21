@@ -165,12 +165,12 @@ func (q *pointerSCQ) Enqueue(data unsafe.Pointer) bool {
 		// Enqueue do not need data, if this entry is empty, we can assume the data is also empty.
 		entFlags := atomic.LoadUint64((*uint64)(unsafe.Pointer(entAddr)))
 		isSafe, isEmpty, cycleEnt := loadSCQFlags(entFlags)
-		ent := scqNodePointer{flags: entFlags}
 		if cycleEnt < cycleT && isEmpty && (isSafe || atomic.LoadUint64(&q.head) <= T) {
 			// We can use this entry for adding new data if
 			// 1. Tail's cycle is bigger than entry's cycle.
 			// 2. It is empty.
 			// 3. It is safe or tail >= head (There is enough space for this data)
+			ent := scqNodePointer{flags: entFlags}
 			newEnt := scqNodePointer{flags: newSCQFlags(true, false, cycleT), data: data}
 			// Save input data into this entry.
 			if !compareAndSwapSCQNodePointer(entAddr, ent, newEnt) {

@@ -165,12 +165,12 @@ func (q *uint64SCQ) Enqueue(data uint64) bool {
 		// Enqueue do not need data, if this entry is empty, we can assume the data is also empty.
 		entFlags := atomic.LoadUint64((*uint64)(unsafe.Pointer(entAddr)))
 		isSafe, isEmpty, cycleEnt := loadSCQFlags(entFlags)
-		ent := scqNodeUint64{flags: entFlags}
 		if cycleEnt < cycleT && isEmpty && (isSafe || atomic.LoadUint64(&q.head) <= T) {
 			// We can use this entry for adding new data if
 			// 1. Tail's cycle is bigger than entry's cycle.
 			// 2. It is empty.
 			// 3. It is safe or tail >= head (There is enough space for this data)
+			ent := scqNodeUint64{flags: entFlags}
 			newEnt := scqNodeUint64{flags: newSCQFlags(true, false, cycleT), data: data}
 			// Save input data into this entry.
 			if !compareAndSwapSCQNodeUint64(entAddr, ent, newEnt) {
@@ -245,12 +245,9 @@ func (q *uint64SCQ) fixstate(originalHead uint64) {
 			return
 		}
 		tailvalue := atomic.LoadUint64(&q.tail)
-		tail := uint64Get63(tailvalue)
-		if tail >= head {
+		if tailvalue >= head {
+			// The queue has been closed, or in normal state.
 			return
-		}
-		if uint64Get1(tailvalue) { // add closed bit if needed
-			head += 1 << 63
 		}
 		if atomic.CompareAndSwapUint64(&q.tail, tailvalue, head) {
 			return
