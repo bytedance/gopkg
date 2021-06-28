@@ -16,6 +16,7 @@ package gopool
 
 import (
 	"context"
+	"github.com/bytedance/gopkg/util/hcontext"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -30,6 +31,8 @@ type Pool interface {
 	Go(f func())
 	// CtxGo executes f and accepts the context.
 	CtxGo(ctx context.Context, f func())
+	// CtxGoNoDeadlineOrCancel executes f and will be no timeouts and cancellations
+	CtxGoNoDeadlineOrCancel(ctx context.Context,f func())
 	// SetPanicHandler sets the panic handler.
 	SetPanicHandler(f func(context.Context, interface{}))
 }
@@ -136,6 +139,12 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 		w.pool = p
 		w.run()
 	}
+}
+
+func (p *pool) CtxGoNoDeadlineOrCancel(ctx context.Context,f func())  {
+	ctx = hcontext.WithNoCancel(ctx)
+	ctx = hcontext.WithNoDeadline(ctx)
+	CtxGo(ctx,f)
 }
 
 // SetPanicHandler the func here will be called after the panic has been recovered.
