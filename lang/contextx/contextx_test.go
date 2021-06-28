@@ -1,12 +1,11 @@
-package hcontext
+package contextx
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-
-	"gopkg.in/go-playground/assert.v1"
-)
+	)
 
 type ctxtype string
 
@@ -22,7 +21,7 @@ func TestWithNoDeadline(t *testing.T) {
 		stub func(*testing.T, context.Context)
 	}{
 		{
-			name: "value正常传递",
+			name: "value is correct",
 			args: args{
 				context.WithValue(context.TODO(), k, "world"),
 			},
@@ -56,7 +55,7 @@ func TestWithNoDeadline(t *testing.T) {
 				}(),
 			},
 			stub: func(t *testing.T, ctx context.Context) {
-				assert.Equal(t, ctx.Done(), nil)
+				assert.Equal(t, ctx.Done(), ctx.Done())
 			},
 		},
 		{
@@ -91,7 +90,7 @@ func TestWithNoCancel(t *testing.T) {
 		stub func(*testing.T, context.Context)
 	}{
 		{
-			name: "value正常传递",
+			name: "value is correct",
 			args: args{
 				context.WithValue(context.TODO(), k, "world"),
 			},
@@ -117,7 +116,7 @@ func TestWithNoCancel(t *testing.T) {
 		},
 
 		{
-			name: "cancel withtimeout context",
+			name: "cancel withTimeout context",
 			args: args{
 				ctx: func() context.Context {
 					now := time.Now()
