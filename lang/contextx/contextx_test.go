@@ -2,16 +2,17 @@ package contextx
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-	)
 
-type ctxtype string
+	"github.com/stretchr/testify/assert"
+)
 
-var k ctxtype = "k"
+type ctxType string
 
-func TestWithNoDeadline(t *testing.T) {
+var k ctxType = "k"
+
+func TestRemoveDeadline(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
@@ -74,13 +75,13 @@ func TestWithNoDeadline(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := WithNoDeadline(tt.args.ctx)
+			got := RemoveDeadline(tt.args.ctx)
 			tt.stub(t, got)
 		})
 	}
 }
 
-func TestWithNoCancel(t *testing.T) {
+func TestRemoveCancel(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
@@ -144,7 +145,7 @@ func TestWithNoCancel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := WithNoCancel(tt.args.ctx)
+			got := RemoveCancel(tt.args.ctx)
 			tt.stub(t, got)
 		})
 	}
