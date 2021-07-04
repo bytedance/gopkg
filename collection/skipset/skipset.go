@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package skipset is a high-performance concurrent set based on skip list.
-// In typical pattern(100000 operations, 90%CONTAINS 9%Add 1%Remove),
-// the skipset up to 3x ~ 15x faster than the built-in sync.Map.
+// Package skipset is a high-performance, scalable, concurrent-safe set based on skip-list.
+// In the typical pattern(100000 operations, 90%CONTAINS 9%Add 1%Remove, 8C16T), the skipset
+// up to 15x faster than the built-in sync.Map.
 package skipset
 
 import (
@@ -25,8 +25,9 @@ import (
 
 // Int64Set represents a set based on skip list in ascending order.
 type Int64Set struct {
-	header *int64Node
-	length int64
+	header       *int64Node
+	length       int64
+	highestLevel int64 // highest level for now
 }
 
 type int64Node struct {
@@ -66,7 +67,8 @@ func NewInt64() *Int64Set {
 	h := newInt64Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
 	return &Int64Set{
-		header: h,
+		header:       h,
+		highestLevel: defaultHighestLevel,
 	}
 }
 
@@ -75,7 +77,7 @@ func NewInt64() *Int64Set {
 func (s *Int64Set) findNodeRemove(value int64, preds *[maxLevel]*int64Node, succs *[maxLevel]*int64Node) int {
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
-	for i := maxLevel - 1; i >= 0; i-- {
+	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
 		succ := x.loadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
@@ -96,7 +98,7 @@ func (s *Int64Set) findNodeRemove(value int64, preds *[maxLevel]*int64Node, succ
 // The returned preds and succs always satisfy preds[i] > value >= succs[i].
 func (s *Int64Set) findNodeAdd(value int64, preds *[maxLevel]*int64Node, succs *[maxLevel]*int64Node) int {
 	x := s.header
-	for i := maxLevel - 1; i >= 0; i-- {
+	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
 		succ := x.loadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
@@ -128,7 +130,7 @@ func unlockInt64(preds [maxLevel]*int64Node, highestLevel int) {
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Int64Set) Add(value int64) bool {
-	level := randomLevel()
+	level := s.randomlevel()
 	var preds, succs [maxLevel]*int64Node
 	for {
 		lFound := s.findNodeAdd(value, &preds, &succs)
@@ -144,7 +146,6 @@ func (s *Int64Set) Add(value int64) bool {
 			// we need to add this node in next loop.
 			continue
 		}
-
 		// Add this node into skip list.
 		var (
 			highestLocked        = -1 // the highest level being locked by this process
@@ -182,10 +183,26 @@ func (s *Int64Set) Add(value int64) bool {
 	}
 }
 
+func (s *Int64Set) randomlevel() int {
+	// Generate random level.
+	level := randomLevel()
+	// Update highest level if possible.
+	for {
+		hl := atomic.LoadInt64(&s.highestLevel)
+		if int64(level) <= hl {
+			break
+		}
+		if atomic.CompareAndSwapInt64(&s.highestLevel, hl, int64(level)) {
+			break
+		}
+	}
+	return level
+}
+
 // Contains check if the value is in the skip set.
 func (s *Int64Set) Contains(value int64) bool {
 	x := s.header
-	for i := maxLevel - 1; i >= 0; i-- {
+	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
 		nex := x.loadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
@@ -279,6 +296,7 @@ func (s *Int64Set) Range(f func(value int64) bool) {
 	}
 }
 
+// Len return the length of this skip set.
 func (s *Int64Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
