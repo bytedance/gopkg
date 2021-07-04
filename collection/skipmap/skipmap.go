@@ -370,9 +370,6 @@ func (s *Int64Map) Range(f func(key int64, value interface{}) bool) {
 	}
 }
 
-// Len return the length of this skipmap.
-// Keep in sync with types_gen.go:lengthFunction
-// Special case for code generation, Must in the tail of skipmap.go.
 func (s *Int64Map) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }

@@ -279,9 +279,6 @@ func (s *Int64Set) Range(f func(value int64) bool) {
 	}
 }
 
-// Len return the length of this skip set.
-// Keep in sync with types_gen.go:lengthFunction
-// Special case for code generation, Must in the tail of skipset.go.
 func (s *Int64Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
