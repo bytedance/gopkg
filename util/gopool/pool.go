@@ -16,7 +16,6 @@ package gopool
 
 import (
 	"context"
-	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -72,13 +71,14 @@ type pool struct {
 	// The name of the pool
 	name string
 
-	cnt uint32
 	// capacity of the pool, the maximum number of goroutines that are actually working
 	cap int32
 	// Configuration information
 	config *Config
 	// linked list of tasks
-	taskLists []taskList
+	taskHead  *task
+	taskTail  *task
+	taskLock  sync.Mutex
 	taskCount int32
 
 	// Record the number of running workers
@@ -91,10 +91,9 @@ type pool struct {
 // NewPool creates a new pool with the given name, cap and config.
 func NewPool(name string, cap int32, config *Config) Pool {
 	p := &pool{
-		name:      name,
-		cap:       cap,
-		config:    config,
-		taskLists: make([]taskList, runtime.GOMAXPROCS(0)),
+		name:   name,
+		cap:    cap,
+		config: config,
 	}
 	return p
 }
@@ -115,16 +114,15 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 	t := taskPool.Get().(*task)
 	t.ctx = ctx
 	t.f = f
-	idx := int(atomic.AddUint32(&p.cnt, 1)) % len(p.taskLists)
-	p.taskLists[idx].Lock()
-	if p.taskLists[idx].taskHead == nil {
-		p.taskLists[idx].taskHead = t
-		p.taskLists[idx].taskTail = t
+	p.taskLock.Lock()
+	if p.taskHead == nil {
+		p.taskHead = t
+		p.taskTail = t
 	} else {
-		p.taskLists[idx].taskTail.next = t
-		p.taskLists[idx].taskTail = t
+		p.taskTail.next = t
+		p.taskTail = t
 	}
-	p.taskLists[idx].Unlock()
+	p.taskLock.Unlock()
 	atomic.AddInt32(&p.taskCount, 1)
 	// The following two conditions are met:
 	// 1. the number of tasks is greater than the threshold.
