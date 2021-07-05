@@ -295,18 +295,21 @@ func TestTransferForward(t *testing.T) {
 
 ///////////////////////////////////////////////
 
-func initMetaInfo(count int) context.Context {
+func initMetaInfo(count int) (context.Context, []string, []string) {
 	ctx := context.Background()
+	var keys, vals []string
 	for i := 0; i < count; i++ {
 		k, v := fmt.Sprintf("key-%d", i), fmt.Sprintf("val-%d", i)
 		ctx = metainfo.WithValue(ctx, k, v)
 		ctx = metainfo.WithPersistentValue(ctx, k, v)
+		keys = append(keys, k)
+		vals = append(vals, v)
 	}
-	return ctx
+	return ctx, keys, vals
 }
 
 func benchmark(b *testing.B, api string, count int) {
-	ctx := initMetaInfo(count)
+	ctx, keys, vals := initMetaInfo(count)
 	switch api {
 	case "TransferForward":
 		b.ReportAllocs()
@@ -318,7 +321,7 @@ func benchmark(b *testing.B, api string, count int) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = metainfo.GetValue(ctx, "key-0")
+			_, _ = metainfo.GetValue(ctx, keys[i%len(keys)])
 		}
 	case "GetAllValues":
 		b.ReportAllocs()
@@ -332,6 +335,12 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithValue(ctx, "key", "val")
 		}
+	case "WithValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ctx = metainfo.WithValue(ctx, vals[i%len(vals)], "val")
+		}
 	case "DelValue":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -342,7 +351,7 @@ func benchmark(b *testing.B, api string, count int) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = metainfo.GetPersistentValue(ctx, "key-0")
+			_, _ = metainfo.GetPersistentValue(ctx, keys[i%len(keys)])
 		}
 	case "GetAllPersistentValues":
 		b.ReportAllocs()
@@ -356,17 +365,40 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithPersistentValue(ctx, "key", "val")
 		}
+	case "WithPersistentValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ctx = metainfo.WithPersistentValue(ctx, vals[i%len(vals)], "val")
+		}
+		_ = ctx
 	case "DelPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.DelPersistentValue(ctx, "key")
 		}
+	case "SaveMetaInfoToMap":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			m := make(map[string]string)
+			metainfo.SaveMetaInfoToMap(ctx, m)
+		}
+	case "SetMetaInfoFromMap":
+		m := make(map[string]string)
+		c := context.Background()
+		metainfo.SaveMetaInfoToMap(ctx, m)
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.SetMetaInfoFromMap(c, m)
+		}
 	}
 }
 
 func benchmarkParallel(b *testing.B, api string, count int) {
-	ctx := initMetaInfo(count)
+	ctx, keys, vals := initMetaInfo(count)
 	switch api {
 	case "TransferForward":
 		b.ReportAllocs()
@@ -380,8 +412,10 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
+			var i int
 			for pb.Next() {
-				_, _ = metainfo.GetValue(ctx, "key-0")
+				_, _ = metainfo.GetValue(ctx, keys[i%len(keys)])
+				i++
 			}
 		})
 	case "GetAllValues":
@@ -400,6 +434,17 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.WithValue(ctx, "key", "val")
 			}
 		})
+	case "WithValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			tmp := ctx
+			var i int
+			for pb.Next() {
+				tmp = metainfo.WithValue(tmp, vals[i%len(vals)], "val")
+				i++
+			}
+		})
 	case "DelValue":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -412,8 +457,10 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
+			var i int
 			for pb.Next() {
-				_, _ = metainfo.GetPersistentValue(ctx, "key-0")
+				_, _ = metainfo.GetPersistentValue(ctx, keys[i%len(keys)])
+				i++
 			}
 		})
 	case "GetAllPersistentValues":
@@ -432,12 +479,43 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.WithPersistentValue(ctx, "key", "val")
 			}
 		})
+	case "WithPersistentValueAcc":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			tmp := ctx
+			var i int
+			for pb.Next() {
+				tmp = metainfo.WithPersistentValue(tmp, vals[i%len(vals)], "val")
+				i++
+			}
+		})
 	case "DelPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				_ = metainfo.DelPersistentValue(ctx, "key")
+			}
+		})
+	case "SaveMetaInfoToMap":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				m := make(map[string]string)
+				metainfo.SaveMetaInfoToMap(ctx, m)
+			}
+		})
+	case "SetMetaInfoFromMap":
+		m := make(map[string]string)
+		c := context.Background()
+		metainfo.SaveMetaInfoToMap(ctx, m)
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = metainfo.SetMetaInfoFromMap(c, m)
 			}
 		})
 	}
@@ -449,15 +527,21 @@ func BenchmarkAll(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
 		"WithPersistentValue",
+		"WithPersistentValueAcc",
 		"DelPersistentValue",
+		"SaveMetaInfoToMap",
+		"SetMetaInfoFromMap",
 	}
 	for _, api := range APIs {
-		api := api
-		b.Run(api, func(b *testing.B) { benchmark(b, api, 10) })
+		for _, cnt := range []int{10, 20, 50, 100} {
+			fun := fmt.Sprintf("%s_%d", api, cnt)
+			b.Run(fun, func(b *testing.B) { benchmark(b, api, cnt) })
+		}
 	}
 }
 
@@ -467,14 +551,20 @@ func BenchmarkAllParallel(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
 		"WithPersistentValue",
+		"WithPersistentValueAcc",
 		"DelPersistentValue",
+		"SaveMetaInfoToMap",
+		"SetMetaInfoFromMap",
 	}
 	for _, api := range APIs {
-		api := api
-		b.Run(api, func(b *testing.B) { benchmarkParallel(b, api, 10) })
+		for _, cnt := range []int{10, 20, 50, 100} {
+			fun := fmt.Sprintf("%s_%d", api, cnt)
+			b.Run(fun, func(b *testing.B) { benchmarkParallel(b, api, cnt) })
+		}
 	}
 }

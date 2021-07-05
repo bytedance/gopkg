@@ -21,6 +21,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 func TestSkipMap(t *testing.T) {
@@ -46,13 +48,18 @@ func TestSkipMap(t *testing.T) {
 	}
 
 	m.Delete(123)
-	_, ok = m.Load(123)
-	if ok || m.Len() != 0 {
+	v, ok = m.Load(123)
+	if ok || m.Len() != 0 || v != nil {
 		t.Fatal("invalid")
 	}
 
-	_, ok = m.LoadOrStore(123, 456)
-	if ok || m.Len() != 1 {
+	v, loaded := m.LoadOrStore(123, 456)
+	if loaded || v != 456 || m.Len() != 1 {
+		t.Fatal("invalid")
+	}
+
+	v, loaded = m.LoadOrStore(123, 789)
+	if !loaded || v != 456 || m.Len() != 1 {
 		t.Fatal("invalid")
 	}
 
@@ -76,7 +83,7 @@ func TestSkipMap(t *testing.T) {
 		t.Fatal("invalid")
 	}
 
-	m.Range(func(key int, value interface{}) bool {
+	m.Range(func(key int, _ interface{}) bool {
 		if key == 123 {
 			m.Store(123, 123)
 		} else if key == 456 {
@@ -110,7 +117,7 @@ func TestSkipMap(t *testing.T) {
 	wg.Add(1)
 	var count int64
 	go func() {
-		m.Range(func(key int, val interface{}) bool {
+		m.Range(func(_ int, _ interface{}) bool {
 			atomic.AddInt64(&count, 1)
 			return true
 		})
@@ -131,6 +138,98 @@ func TestSkipMap(t *testing.T) {
 	if m.Len() != 999 || int(count) != m.Len() {
 		t.Fatal("fail")
 	}
+	// Correctness 2.
+	var m1 sync.Map
+	m2 := NewUint32()
+	var v1, v2 interface{}
+	var ok1, ok2 bool
+	for i := 0; i < 100000; i++ {
+		rd := fastrand.Uint32n(10)
+		r1, r2 := fastrand.Uint32n(100), fastrand.Uint32n(100)
+		if rd == 0 {
+			m1.Store(r1, r2)
+			m2.Store(r1, r2)
+		} else if rd == 1 {
+			v1, ok1 = m1.LoadAndDelete(r1)
+			v2, ok2 = m2.LoadAndDelete(r1)
+			if ok1 != ok2 || v1 != v2 {
+				t.Fatal(rd, v1, ok1, v2, ok2)
+			}
+		} else if rd == 2 {
+			v1, ok1 = m1.LoadOrStore(r1, r2)
+			v2, ok2 = m2.LoadOrStore(r1, r2)
+			if ok1 != ok2 || v1 != v2 {
+				t.Fatal(rd, v1, ok1, v2, ok2, "input -> ", r1, r2)
+			}
+		} else if rd == 3 {
+			m1.Delete(r1)
+			m2.Delete(r1)
+		} else if rd == 4 {
+			m2.Range(func(key uint32, value interface{}) bool {
+				v, ok := m1.Load(key)
+				if !ok || v != value {
+					t.Fatal(v, ok, key, value)
+				}
+				return true
+			})
+		} else {
+			v1, ok1 = m1.Load(r1)
+			v2, ok2 = m2.Load(r1)
+			if ok1 != ok2 || v1 != v2 {
+				t.Fatal(rd, v1, ok1, v2, ok2)
+			}
+		}
+	}
+	// Correntness 3. (LoadOrStore)
+	// Only one LoadorStore can successfully insert its key and value.
+	// And the returned value is unique.
+	mp := NewInt()
+	tmpmap := NewInt64()
+	samekey := 123
+	var added int64
+	for i := 1; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			v := fastrand.Int63()
+			actual, loaded := mp.LoadOrStore(samekey, v)
+			if !loaded {
+				atomic.AddInt64(&added, 1)
+			}
+			tmpmap.Store(actual.(int64), nil)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	if added != 1 {
+		t.Fatal("only one LoadOrStore can successfully insert a key and value")
+	}
+	if tmpmap.Len() != 1 {
+		t.Fatal("only one value can be returned from LoadOrStore")
+	}
+	// Correntness 4. (LoadAndDelete)
+	// Only one LoadAndDelete can successfully get a value.
+	mp = NewInt()
+	tmpmap = NewInt64()
+	samekey = 123
+	added = 0 // int64
+	mp.Store(samekey, 555)
+	for i := 1; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			value, loaded := mp.LoadAndDelete(samekey)
+			if loaded {
+				atomic.AddInt64(&added, 1)
+				if value != 555 {
+					panic("invalid")
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	if added != 1 {
+		t.Fatal("Only one LoadAndDelete can successfully get a value")
+	}
 }
 
 func TestSkipMapDesc(t *testing.T) {
@@ -140,7 +239,7 @@ func TestSkipMapDesc(t *testing.T) {
 		m.Store(v, nil)
 	}
 	i := len(cases) - 1
-	m.Range(func(key int, value interface{}) bool {
+	m.Range(func(key int, _ interface{}) bool {
 		if key != cases[i] {
 			t.Fail()
 		}

@@ -34,3 +34,8 @@ func ReadUnaligned32(p unsafe.Pointer) uint64 {
 	q := (*[4]byte)(p)
 	return uint64(uint32(q[3]) | uint32(q[2])<<8 | uint32(q[1])<<16 | uint32(q[0])<<24)
 }
+
+func ReadUnaligned16(p unsafe.Pointer) uint64 {
+	q := (*[2]byte)(p)
+	return uint64(uint32(q[1]) | uint32(q[0])<<8)
+}

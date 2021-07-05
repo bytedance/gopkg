@@ -23,6 +23,10 @@ const (
 	PrefixPersistent        = "RPC_PERSIST_"
 	PrefixTransient         = "RPC_TRANSIT_"
 	PrefixTransientUpstream = "RPC_TRANSIT_UPSTREAM_"
+
+	lenPTU = len(PrefixTransientUpstream)
+	lenPT  = len(PrefixTransient)
+	lenPP  = len(PrefixPersistent)
 )
 
 // **Using empty string as key or value is not support.**
@@ -30,35 +34,39 @@ const (
 // TransferForward converts transient values to transient-upstream values and filters out original transient-upstream values.
 // It should be used before the context is passing from server to client.
 func TransferForward(ctx context.Context) context.Context {
-	if ctx == nil {
-		return nil
+	if n := getNode(ctx); n != nil {
+		return withNode(ctx, n.transferForward())
 	}
-	return copyLink(ctx, func(mode infoType, k, v string) *pair {
-		if mode == transientUpstreamType {
-			return nil
-		}
-		if mode == transientType {
-			mode = transientUpstreamType
-		}
-		return &pair{
-			mode: mode,
-			key:  k,
-			val:  v,
-		}
-	})
+	return ctx
 }
 
 // GetValue retrieves the value set into the context by the given key.
-func GetValue(ctx context.Context, k string) (string, bool) {
-	return getV(ctx, transientUpstreamType|transientType, k)
+func GetValue(ctx context.Context, k string) (v string, ok bool) {
+	if n := getNode(ctx); n != nil {
+		if idx, ok := search(n.transient, k); ok {
+			return n.transient[idx].val, true
+		}
+		if idx, ok := search(n.stale, k); ok {
+			return n.stale[idx].val, true
+		}
+	}
+	return
 }
 
 // GetAllValues retrieves all transient values
-func GetAllValues(ctx context.Context) map[string]string {
-	if ctx == nil {
-		return nil
+func GetAllValues(ctx context.Context) (m map[string]string) {
+	if n := getNode(ctx); n != nil {
+		if cnt := len(n.stale) + len(n.transient); cnt > 0 {
+			m = make(map[string]string, cnt)
+			for _, kv := range n.stale {
+				m[kv.key] = kv.val
+			}
+			for _, kv := range n.transient {
+				m[kv.key] = kv.val
+			}
+		}
 	}
-	return getAll(ctx, transientUpstreamType|transientType)
+	return
 }
 
 // WithValue sets the value into the context by the given key.
@@ -70,7 +78,16 @@ func WithValue(ctx context.Context, k, v string) context.Context {
 	if len(k) == 0 || len(v) == 0 {
 		return ctx
 	}
-	return addKV(ctx, transientType, k, v)
+	if n := getNode(ctx); n != nil {
+		if m := n.addTransient(k, v); m != n {
+			return withNode(ctx, m)
+		}
+	} else {
+		return withNode(ctx, &node{
+			transient: []kv{{key: k, val: v}},
+		})
+	}
+	return ctx
 }
 
 // DelValue deletes a key/value from the current context.
@@ -79,20 +96,35 @@ func DelValue(ctx context.Context, k string) context.Context {
 	if len(k) == 0 {
 		return ctx
 	}
-	return addKV(ctx, transientType, k, "")
+	if n := getNode(ctx); n != nil {
+		if m := n.delTransient(k); m != n {
+			return withNode(ctx, m)
+		}
+	}
+	return ctx
 }
 
 // GetPersistentValue retrieves the persistent value set into the context by the given key.
-func GetPersistentValue(ctx context.Context, k string) (string, bool) {
-	return getV(ctx, persistentType, k)
+func GetPersistentValue(ctx context.Context, k string) (v string, ok bool) {
+	if n := getNode(ctx); n != nil {
+		if idx, ok := search(n.persistent, k); ok {
+			return n.persistent[idx].val, true
+		}
+	}
+	return
 }
 
 // GetAllPersistentValues retrieves all persistent values.
-func GetAllPersistentValues(ctx context.Context) map[string]string {
-	if ctx == nil {
-		return nil
+func GetAllPersistentValues(ctx context.Context) (m map[string]string) {
+	if n := getNode(ctx); n != nil {
+		if cnt := len(n.persistent); cnt > 0 {
+			m = make(map[string]string, cnt)
+			for _, kv := range n.persistent {
+				m[kv.key] = kv.val
+			}
+		}
 	}
-	return getAll(ctx, persistentType)
+	return
 }
 
 // WithPersistentValue sets the value info the context by the given key.
@@ -101,7 +133,16 @@ func WithPersistentValue(ctx context.Context, k, v string) context.Context {
 	if len(k) == 0 || len(v) == 0 {
 		return ctx
 	}
-	return addKV(ctx, persistentType, k, v)
+	if n := getNode(ctx); n != nil {
+		if m := n.addPersistent(k, v); m != n {
+			return withNode(ctx, m)
+		}
+	} else {
+		return withNode(ctx, &node{
+			persistent: []kv{{key: k, val: v}},
+		})
+	}
+	return ctx
 }
 
 // DelPersistentValue deletes a persistent key/value from the current context.
@@ -110,5 +151,10 @@ func DelPersistentValue(ctx context.Context, k string) context.Context {
 	if len(k) == 0 {
 		return ctx
 	}
-	return addKV(ctx, persistentType, k, "")
+	if n := getNode(ctx); n != nil {
+		if m := n.delPersistent(k); m != n {
+			return withNode(ctx, m)
+		}
+	}
+	return ctx
 }

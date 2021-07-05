@@ -16,93 +16,140 @@ package metainfo
 
 import "context"
 
-type infoType int
-
-const (
-	invalidType           infoType = 0
-	transientUpstreamType infoType = 1 << iota
-	transientType
-	persistentType
-)
-
 type ctxKeyType struct{}
 
 var ctxKey ctxKeyType
 
-type pair struct {
-	pre  *pair
-	mode infoType
-	key  string
-	val  string
+type kv struct {
+	key string
+	val string
 }
 
-func getKV(ctx context.Context) *pair {
+type node struct {
+	persistent []kv
+	transient  []kv
+	stale      []kv
+}
+
+func (n *node) size() int {
+	return len(n.persistent) + len(n.transient) + len(n.stale)
+}
+
+func (n *node) transferForward() (r *node) {
+	r = &node{
+		persistent: n.persistent,
+		stale:      n.transient,
+	}
+	return
+}
+
+func (n *node) addTransient(k, v string) *node {
+	if res, ok := remove(n.stale, k); ok {
+		return &node{
+			persistent: n.persistent,
+			transient: append(n.transient, kv{
+				key: k,
+				val: v,
+			}),
+			stale: res,
+		}
+	}
+
+	if idx, ok := search(n.transient, k); ok {
+		if n.transient[idx].val == v {
+			return n
+		}
+		r := *n
+		r.transient = make([]kv, len(n.transient))
+		copy(r.transient, n.transient)
+		r.transient[idx].val = v
+		return &r
+	}
+
+	r := *n
+	r.transient = append(r.transient, kv{
+		key: k,
+		val: v,
+	})
+	return &r
+}
+
+func (n *node) addPersistent(k, v string) *node {
+	if idx, ok := search(n.persistent, k); ok {
+		if n.persistent[idx].val == v {
+			return n
+		}
+		r := *n
+		r.persistent = make([]kv, len(n.persistent))
+		copy(r.persistent, n.persistent)
+		r.persistent[idx].val = v
+		return &r
+	}
+	r := *n
+	r.persistent = append(r.persistent, kv{
+		key: k,
+		val: v,
+	})
+	return &r
+}
+
+func (n *node) delTransient(k string) (r *node) {
+	if res, ok := remove(n.stale, k); ok {
+		return &node{
+			persistent: n.persistent,
+			transient:  n.transient,
+			stale:      res,
+		}
+	}
+	if res, ok := remove(n.transient, k); ok {
+		return &node{
+			persistent: n.persistent,
+			transient:  res,
+			stale:      n.stale,
+		}
+	}
+	return n
+}
+
+func (n *node) delPersistent(k string) (r *node) {
+	if res, ok := remove(n.persistent, k); ok {
+		return &node{
+			persistent: res,
+			transient:  n.transient,
+			stale:      n.stale,
+		}
+	}
+	return n
+}
+
+func search(kvs []kv, key string) (idx int, ok bool) {
+	for i := range kvs {
+		if kvs[i].key == key {
+			return i, true
+		}
+	}
+	return
+}
+
+func remove(kvs []kv, key string) (res []kv, removed bool) {
+	if idx, ok := search(kvs, key); ok {
+		return append(kvs[:idx], kvs[idx+1:]...), true
+	}
+	return kvs, false
+}
+
+func getNode(ctx context.Context) *node {
 	if ctx != nil {
-		if kv, ok := ctx.Value(ctxKey).(*pair); ok {
-			return kv
+		if val, ok := ctx.Value(ctxKey).(*node); ok {
+			return val
 		}
 	}
 	return nil
 }
 
-func addKV(ctx context.Context, it infoType, key, val string) context.Context {
+func withNode(ctx context.Context, n *node) context.Context {
 	if ctx == nil {
-		return nil
+		return ctx
 	}
-	return context.WithValue(ctx, ctxKey, &pair{
-		pre:  getKV(ctx),
-		mode: it,
-		key:  key,
-		val:  val,
-	})
-}
-
-func getV(ctx context.Context, mode infoType, key string) (string, bool) {
-	kv := getKV(ctx)
-	for kv != nil {
-		if kv.key == key && (kv.mode&mode) > 0 {
-			return kv.val, len(kv.val) > 0
-		}
-		kv = kv.pre
-	}
-	return "", false
-}
-
-func getAll(ctx context.Context, mode infoType) map[string]string {
-	kvs := make(map[string]string)
-	del := make(map[string]struct{})
-	kv := getKV(ctx)
-	for kv != nil {
-		if kv.mode&mode > 0 {
-			if _, exist := kvs[kv.key]; !exist {
-				kvs[kv.key] = kv.val
-				if len(kv.val) == 0 {
-					del[kv.key] = struct{}{}
-				}
-			}
-		}
-		kv = kv.pre
-	}
-	for k := range del {
-		delete(kvs, k)
-	}
-	return kvs
-}
-
-// copyLink creates a new link copying the original one with each node processed by the given `modifier`.
-// If modifier returns nil, the kv pair will be discard.
-// Modifier must always return a valid pair object's pointer or nil.
-func copyLink(ctx context.Context, modifier func(mode infoType, k, v string) *pair) context.Context {
-	var n *pair
-	pre := &n
-	kv := getKV(ctx)
-	for kv != nil {
-		if p := modifier(kv.mode, kv.key, kv.val); p != nil {
-			*pre = p
-			pre = &p.pre
-		}
-		kv = kv.pre
-	}
-	// When n is nil after all, the whole link should be invisible in the new context
 	return context.WithValue(ctx, ctxKey, n)
 }

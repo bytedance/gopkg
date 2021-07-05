@@ -12,35 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package skipmap
+// +build ignore
 
-import (
-	_ "unsafe" // for linkname
+package main
 
-	"github.com/bytedance/gopkg/internal/wyhash"
-	"github.com/bytedance/gopkg/lang/fastrand"
+import "flag"
+
+var (
+	avx = flag.Bool("avx2", false, "avx2")
+	sse = flag.Bool("sse2", false, "sse2")
 )
 
-const (
-	maxLevel            = 16
-	p                   = 0.25
-	defaultHighestLevel = 3
-)
+func main() {
+	flag.Parse()
 
-func hash(s string) uint64 {
-	return wyhash.Sum64String(s)
-}
-
-//go:linkname cmpstring runtime.cmpstring
-func cmpstring(a, b string) int
-
-func randomLevel() int {
-	level := 1
-	for fastrand.Uint32n(1/p) == 0 {
-		level++
+	if *avx {
+		AVX2()
+	} else if *sse {
+		SSE2()
 	}
-	if level > maxLevel {
-		return maxLevel
-	}
-	return level
 }

@@ -12,35 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package skipmap
+// +build !race
+
+package syncx
 
 import (
-	_ "unsafe" // for linkname
-
-	"github.com/bytedance/gopkg/internal/wyhash"
-	"github.com/bytedance/gopkg/lang/fastrand"
+	_ "sync"
+	_ "unsafe"
 )
 
-const (
-	maxLevel            = 16
-	p                   = 0.25
-	defaultHighestLevel = 3
-)
+//go:noescape
+//go:linkname runtime_registerPoolCleanup sync.runtime_registerPoolCleanup
+func runtime_registerPoolCleanup(cleanup func())
 
-func hash(s string) uint64 {
-	return wyhash.Sum64String(s)
-}
-
-//go:linkname cmpstring runtime.cmpstring
-func cmpstring(a, b string) int
-
-func randomLevel() int {
-	level := 1
-	for fastrand.Uint32n(1/p) == 0 {
-		level++
-	}
-	if level > maxLevel {
-		return maxLevel
-	}
-	return level
-}
+//go:noescape
+//go:linkname runtime_poolCleanup sync.poolCleanup
+func runtime_poolCleanup()
