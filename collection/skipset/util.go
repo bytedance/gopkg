@@ -17,13 +17,19 @@ package skipset
 import (
 	_ "unsafe" // for linkname
 
+	"github.com/bytedance/gopkg/internal/wyhash"
 	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
 const (
-	maxLevel = 16
-	p        = 0.25
+	maxLevel            = 16
+	p                   = 0.25
+	defaultHighestLevel = 3
 )
+
+func hash(s string) uint64 {
+	return wyhash.Sum64String(s)
+}
 
 //go:linkname cmpstring runtime.cmpstring
 func cmpstring(a, b string) int

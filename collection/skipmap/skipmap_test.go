@@ -48,13 +48,18 @@ func TestSkipMap(t *testing.T) {
 	}
 
 	m.Delete(123)
-	_, ok = m.Load(123)
-	if ok || m.Len() != 0 {
+	v, ok = m.Load(123)
+	if ok || m.Len() != 0 || v != nil {
 		t.Fatal("invalid")
 	}
 
-	_, ok = m.LoadOrStore(123, 456)
-	if ok || m.Len() != 1 {
+	v, loaded := m.LoadOrStore(123, 456)
+	if loaded || v != 456 || m.Len() != 1 {
+		t.Fatal("invalid")
+	}
+
+	v, loaded = m.LoadOrStore(123, 789)
+	if !loaded || v != 456 || m.Len() != 1 {
 		t.Fatal("invalid")
 	}
 
@@ -78,7 +83,7 @@ func TestSkipMap(t *testing.T) {
 		t.Fatal("invalid")
 	}
 
-	m.Range(func(key int, value interface{}) bool {
+	m.Range(func(key int, _ interface{}) bool {
 		if key == 123 {
 			m.Store(123, 123)
 		} else if key == 456 {
@@ -112,7 +117,7 @@ func TestSkipMap(t *testing.T) {
 	wg.Add(1)
 	var count int64
 	go func() {
-		m.Range(func(key int, val interface{}) bool {
+		m.Range(func(_ int, _ interface{}) bool {
 			atomic.AddInt64(&count, 1)
 			return true
 		})
@@ -175,6 +180,56 @@ func TestSkipMap(t *testing.T) {
 			}
 		}
 	}
+	// Correntness 3. (LoadOrStore)
+	// Only one LoadorStore can successfully insert its key and value.
+	// And the returned value is unique.
+	mp := NewInt()
+	tmpmap := NewInt64()
+	samekey := 123
+	var added int64
+	for i := 1; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			v := fastrand.Int63()
+			actual, loaded := mp.LoadOrStore(samekey, v)
+			if !loaded {
+				atomic.AddInt64(&added, 1)
+			}
+			tmpmap.Store(actual.(int64), nil)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	if added != 1 {
+		t.Fatal("only one LoadOrStore can successfully insert a key and value")
+	}
+	if tmpmap.Len() != 1 {
+		t.Fatal("only one value can be returned from LoadOrStore")
+	}
+	// Correntness 4. (LoadAndDelete)
+	// Only one LoadAndDelete can successfully get a value.
+	mp = NewInt()
+	tmpmap = NewInt64()
+	samekey = 123
+	added = 0 // int64
+	mp.Store(samekey, 555)
+	for i := 1; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			value, loaded := mp.LoadAndDelete(samekey)
+			if loaded {
+				atomic.AddInt64(&added, 1)
+				if value != 555 {
+					panic("invalid")
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	if added != 1 {
+		t.Fatal("Only one LoadAndDelete can successfully get a value")
+	}
 }
 
 func TestSkipMapDesc(t *testing.T) {
@@ -184,7 +239,7 @@ func TestSkipMapDesc(t *testing.T) {
 		m.Store(v, nil)
 	}
 	i := len(cases) - 1
-	m.Range(func(key int, value interface{}) bool {
+	m.Range(func(key int, _ interface{}) bool {
 		if key != cases[i] {
 			t.Fail()
 		}
