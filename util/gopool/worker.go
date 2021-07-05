@@ -25,8 +25,6 @@ import (
 
 var workerPool sync.Pool
 
-var globalCnt uint32
-
 func init() {
 	workerPool.New = newWorker
 }
@@ -40,30 +38,23 @@ func newWorker() interface{} {
 }
 
 func (w *worker) run() {
-	l := len(w.pool.taskLists)
 	go func() {
 		for {
 			var t *task
-			for i := 0; i < l; i++ {
-				idx := int(atomic.AddUint32(&globalCnt, 1)) % l
-				w.pool.taskLists[idx].Lock()
-				if w.pool.taskLists[idx].taskHead != nil {
-					t = w.pool.taskLists[idx].taskHead
-					w.pool.taskLists[idx].taskHead = w.pool.taskLists[idx].taskHead.next
-					atomic.AddInt32(&w.pool.taskCount, -1)
-					w.pool.taskLists[idx].Unlock()
-					break
-				} else {
-					if i == l-1 {
-						// 最后一次循环，如果没有任务要做了，就释放资源，退出
-						w.close()
-						w.pool.taskLists[idx].Unlock()
-						w.Recycle()
-						return
-					}
-					w.pool.taskLists[idx].Unlock()
-				}
+			w.pool.taskLock.Lock()
+			if w.pool.taskHead != nil {
+				t = w.pool.taskHead
+				w.pool.taskHead = w.pool.taskHead.next
+				atomic.AddInt32(&w.pool.taskCount, -1)
 			}
+			if t == nil {
+				// if there's no task to do, exit
+				w.close()
+				w.pool.taskLock.Unlock()
+				w.Recycle()
+				return
+			}
+			w.pool.taskLock.Unlock()
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
