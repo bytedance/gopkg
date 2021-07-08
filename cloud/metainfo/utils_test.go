@@ -91,6 +91,35 @@ func TestSetMetaInfoFromMap(t *testing.T) {
 	assert(t, v3 == "v6")
 }
 
+func TestSetMetaInfoFromMapKeepPreviousData(t *testing.T) {
+	ctx0 := context.Background()
+	ctx0 = metainfo.WithValue(ctx0, "uk", "uv")
+	ctx0 = metainfo.TransferForward(ctx0)
+	ctx0 = metainfo.WithValue(ctx0, "tk", "tv")
+	ctx0 = metainfo.WithPersistentValue(ctx0, "pk", "pv")
+
+	m := map[string]string{
+		metainfo.PrefixTransientUpstream + "xk": "xv",
+		metainfo.PrefixTransient + "yk":         "yv",
+		metainfo.PrefixPersistent + "zk":        "zv",
+		metainfo.PrefixTransient + "uk":         "vv", // overwrite "uk"
+	}
+	ctx1 := metainfo.SetMetaInfoFromMap(ctx0, m)
+	assert(t, ctx1 != ctx0)
+
+	ts := metainfo.GetAllValues(ctx1)
+	ps := metainfo.GetAllPersistentValues(ctx1)
+	assert(t, len(ts) == 4)
+	assert(t, len(ps) == 2)
+
+	assert(t, ts["uk"] == "vv")
+	assert(t, ts["tk"] == "tv")
+	assert(t, ts["xk"] == "xv")
+	assert(t, ts["yk"] == "yv")
+	assert(t, ps["pk"] == "pv")
+	assert(t, ps["zk"] == "zv")
+}
+
 func TestSaveMetaInfoToMap(t *testing.T) {
 	m := make(map[string]string)
 

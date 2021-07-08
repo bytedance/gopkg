@@ -140,18 +140,6 @@ func (m *mapView) size() int {
 	return len(m.persistent) + len(m.transient) + len(m.stale)
 }
 
-func (m *mapView) merge(n *mapView) {
-	for k, v := range n.persistent {
-		m.persistent[k] = v
-	}
-	for k, v := range n.transient {
-		m.transient[k] = v
-	}
-	for k, v := range n.stale {
-		m.stale[k] = v
-	}
-}
-
 func (m *mapView) toNode() *node {
 	return &node{
 		persistent: mapToSlice(m.persistent),

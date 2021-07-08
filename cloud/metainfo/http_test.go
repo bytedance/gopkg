@@ -72,6 +72,28 @@ func TestFromHTTPHeader(t *testing.T) {
 	assert(t, len(vs) == 1 && vs["XYZ"] == "000")
 }
 
+func TestFromHTTPHeaderKeepPreviousData(t *testing.T) {
+	c0 := context.Background()
+	c0 = metainfo.WithValue(c0, "uk", "uv")
+	c0 = metainfo.TransferForward(c0)
+	c0 = metainfo.WithValue(c0, "tk", "tv")
+	c0 = metainfo.WithPersistentValue(c0, "pk", "pv")
+
+	h := make(http.Header)
+	h.Set(metainfo.HTTPPrefixTransient+"xk", "xv")
+	h.Set(metainfo.HTTPPrefixPersistent+"yk", "yv")
+	h.Set(metainfo.HTTPPrefixPersistent+"pk", "pp")
+
+	c1 := metainfo.FromHTTPHeader(c0, metainfo.HTTPHeader(h))
+	assert(t, c0 != c1)
+	vs := metainfo.GetAllValues(c1)
+	assert(t, len(vs) == 3)
+	assert(t, vs["tk"] == "tv" && vs["uk"] == "uv" && vs["XK"] == "xv")
+	vs = metainfo.GetAllPersistentValues(c1)
+	assert(t, len(vs) == 3)
+	assert(t, vs["pk"] == "pv" && vs["YK"] == "yv" && vs["PK"] == "pp")
+}
+
 func TestToHTTPHeader(t *testing.T) {
 	metainfo.ToHTTPHeader(nil, nil)
 
