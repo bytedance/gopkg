@@ -122,6 +122,40 @@ func (n *node) delPersistent(k string) (r *node) {
 	return n
 }
 
+type mapView struct {
+	persistent map[string]string
+	transient  map[string]string
+	stale      map[string]string
+}
+
+func newMapView() *mapView {
+	return &mapView{
+		persistent: make(map[string]string),
+		transient:  make(map[string]string),
+		stale:      make(map[string]string),
+	}
+}
+
+func (m *mapView) size() int {
+	return len(m.persistent) + len(m.transient) + len(m.stale)
+}
+
+func (m *mapView) toNode() *node {
+	return &node{
+		persistent: mapToSlice(m.persistent),
+		transient:  mapToSlice(m.transient),
+		stale:      mapToSlice(m.stale),
+	}
+}
+
+func (n *node) mapView() *mapView {
+	return &mapView{
+		persistent: sliceToMap(n.persistent),
+		transient:  sliceToMap(n.transient),
+		stale:      sliceToMap(n.stale),
+	}
+}
+
 func search(kvs []kv, key string) (idx int, ok bool) {
 	for i := range kvs {
 		if kvs[i].key == key {

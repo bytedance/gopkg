@@ -73,7 +73,12 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 		return ctx
 	}
 
-	var n node
+	var m *mapView
+	if x := getNode(ctx); x != nil {
+		m = x.mapView()
+	} else {
+		m = newMapView()
+	}
 	h.Visit(func(k, v string) {
 		if len(v) == 0 {
 			return
@@ -84,18 +89,18 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 
 		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
 			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
-			n.transient = append(n.transient, kv{key: kk, val: v})
+			m.transient[kk] = v
 		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
 			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
-			n.persistent = append(n.persistent, kv{key: kk, val: v})
+			m.persistent[kk] = v
 		}
 	})
 
-	if n.size() == 0 {
+	if m.size() == 0 {
 		// TODO: remove this?
 		return ctx
 	}
-	return withNode(ctx, &n)
+	return withNode(ctx, m.toNode())
 }
 
 // ToHTTPHeader writes all metainfo into the given HTTP header.
