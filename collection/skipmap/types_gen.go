@@ -125,10 +125,8 @@ func replaceString(data string) string {
 	score uint64`, -1)
 
 	data = strings.Replace(data,
+		`&int64Node{`,
 		`&int64Node{
-		key:  key,`,
-		`&int64Node{
-		key:  key,
 		score: hash(key),`, -1)
 
 	// Refactor comparsion.

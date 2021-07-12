@@ -32,26 +32,37 @@ type Int64Set struct {
 
 type int64Node struct {
 	value int64
-	next  []*int64Node
+	next  optionalArray // [level]*int64Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newInt64Node(value int64, level int) *int64Node {
-	return &int64Node{
+	node := &int64Node{
 		value: value,
-		next:  make([]*int64Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *int64Node) loadNext(i int) *int64Node {
-	return (*int64Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*int64Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *int64Node) storeNext(i int, node *int64Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *int64Node) atomicLoadNext(i int) *int64Node {
+	return (*int64Node)(n.next.atomicLoad(i))
+}
+
+func (n *int64Node) atomicStoreNext(i int, node *int64Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *int64Node) lessthan(value int64) bool {
@@ -78,10 +89,10 @@ func (s *Int64Set) findNodeRemove(value int64, preds *[maxLevel]*int64Node, succ
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -99,10 +110,10 @@ func (s *Int64Set) findNodeRemove(value int64, preds *[maxLevel]*int64Node, succ
 func (s *Int64Set) findNodeAdd(value int64, preds *[maxLevel]*int64Node, succs *[maxLevel]*int64Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -164,7 +175,7 @@ func (s *Int64Set) Add(value int64) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt64(preds, highestLocked)
@@ -173,8 +184,8 @@ func (s *Int64Set) Add(value int64) bool {
 
 		nn := newInt64Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt64(preds, highestLocked)
@@ -203,10 +214,10 @@ func (s *Int64Set) randomlevel() int {
 func (s *Int64Set) Contains(value int64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -228,7 +239,7 @@ func (s *Int64Set) Remove(value int64) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -260,7 +271,7 @@ func (s *Int64Set) Remove(value int64) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt64(preds, highestLocked)
@@ -269,7 +280,7 @@ func (s *Int64Set) Remove(value int64) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockInt64(preds, highestLocked)
@@ -283,16 +294,16 @@ func (s *Int64Set) Remove(value int64) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Int64Set) Range(f func(value int64) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
