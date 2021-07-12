@@ -32,19 +32,23 @@ type Int64Map struct {
 
 type int64Node struct {
 	key   int64
-	value unsafe.Pointer
-	next  []*int64Node
+	value unsafe.Pointer // *interface{}
+	next  optionalArray  // [level]*int64Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newInt64Node(key int64, value interface{}, level int) *int64Node {
-	n := &int64Node{
-		key:  key,
-		next: make([]*int64Node, level),
+	node := &int64Node{
+		key:   key,
+		level: uint32(level),
 	}
-	n.storeVal(value)
-	return n
+	node.storeVal(value)
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
 func (n *int64Node) storeVal(value interface{}) {
@@ -55,14 +59,20 @@ func (n *int64Node) loadVal() interface{} {
 	return *(*interface{})(atomic.LoadPointer(&n.value))
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *int64Node) loadNext(i int) *int64Node {
-	return (*int64Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*int64Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = value`(atomic)
-func (n *int64Node) storeNext(i int, value *int64Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(value))
+func (n *int64Node) storeNext(i int, node *int64Node) {
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *int64Node) atomicLoadNext(i int) *int64Node {
+	return (*int64Node)(n.next.atomicLoad(i))
+}
+
+func (n *int64Node) atomicStoreNext(i int, node *int64Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *int64Node) lessthan(key int64) bool {
@@ -89,10 +99,10 @@ func NewInt64() *Int64Map {
 func (s *Int64Map) findNode(key int64, preds *[maxLevel]*int64Node, succs *[maxLevel]*int64Node) *int64Node {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(key) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -111,10 +121,10 @@ func (s *Int64Map) findNodeDelete(key int64, preds *[maxLevel]*int64Node, succs 
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(key) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -173,7 +183,7 @@ func (s *Int64Map) Store(key int64, value interface{}) {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt64(preds, highestLocked)
@@ -182,8 +192,8 @@ func (s *Int64Map) Store(key int64, value interface{}) {
 
 		nn := newInt64Node(key, value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt64(preds, highestLocked)
@@ -213,10 +223,10 @@ func (s *Int64Map) randomlevel() int {
 func (s *Int64Map) Load(key int64) (value interface{}, ok bool) {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(key) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the key already in the skip list.
@@ -242,7 +252,7 @@ func (s *Int64Map) LoadAndDelete(key int64) (value interface{}, loaded bool) {
 	for {
 		lFound := s.findNodeDelete(key, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToDelete = succs[lFound]
 				topLayer = lFound
@@ -274,7 +284,7 @@ func (s *Int64Map) LoadAndDelete(key int64) (value interface{}, loaded bool) {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt64(preds, highestLocked)
@@ -283,7 +293,7 @@ func (s *Int64Map) LoadAndDelete(key int64) (value interface{}, loaded bool) {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToDelete`, no other goroutine will modify it.
 				// So we don't need `nodeToDelete.loadNext`
-				preds[i].storeNext(i, nodeToDelete.next[i])
+				preds[i].atomicStoreNext(i, nodeToDelete.loadNext(i))
 			}
 			nodeToDelete.mu.Unlock()
 			unlockInt64(preds, highestLocked)
@@ -331,7 +341,7 @@ func (s *Int64Map) LoadOrStore(key int64, value interface{}) (actual interface{}
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt64(preds, highestLocked)
@@ -340,8 +350,8 @@ func (s *Int64Map) LoadOrStore(key int64, value interface{}) (actual interface{}
 
 		nn := newInt64Node(key, value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt64(preds, highestLocked)
@@ -361,7 +371,7 @@ func (s *Int64Map) Delete(key int64) bool {
 	for {
 		lFound := s.findNodeDelete(key, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToDelete = succs[lFound]
 				topLayer = lFound
@@ -393,7 +403,7 @@ func (s *Int64Map) Delete(key int64) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
+				valid = !pred.flags.Get(marked) && pred.atomicLoadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt64(preds, highestLocked)
@@ -402,7 +412,7 @@ func (s *Int64Map) Delete(key int64) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToDelete`, no other goroutine will modify it.
 				// So we don't need `nodeToDelete.loadNext`
-				preds[i].storeNext(i, nodeToDelete.next[i])
+				preds[i].atomicStoreNext(i, nodeToDelete.loadNext(i))
 			}
 			nodeToDelete.mu.Unlock()
 			unlockInt64(preds, highestLocked)
@@ -421,16 +431,16 @@ func (s *Int64Map) Delete(key int64) bool {
 // is stored or deleted concurrently, Range may reflect any mapping for that key
 // from any point during the Range call.
 func (s *Int64Map) Range(f func(key int64, value interface{}) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.key, x.loadVal()) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
