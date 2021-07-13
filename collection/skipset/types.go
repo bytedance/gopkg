@@ -31,26 +31,37 @@ type Float32Set struct {
 
 type float32Node struct {
 	value float32
-	next  []*float32Node
+	next  optionalArray // [level]*float32Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newFloat32Node(value float32, level int) *float32Node {
-	return &float32Node{
+	node := &float32Node{
 		value: value,
-		next:  make([]*float32Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *float32Node) loadNext(i int) *float32Node {
-	return (*float32Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*float32Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *float32Node) storeNext(i int, node *float32Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *float32Node) atomicLoadNext(i int) *float32Node {
+	return (*float32Node)(n.next.atomicLoad(i))
+}
+
+func (n *float32Node) atomicStoreNext(i int, node *float32Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *float32Node) lessthan(value float32) bool {
@@ -77,10 +88,10 @@ func (s *Float32Set) findNodeRemove(value float32, preds *[maxLevel]*float32Node
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -98,10 +109,10 @@ func (s *Float32Set) findNodeRemove(value float32, preds *[maxLevel]*float32Node
 func (s *Float32Set) findNodeAdd(value float32, preds *[maxLevel]*float32Node, succs *[maxLevel]*float32Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -163,7 +174,7 @@ func (s *Float32Set) Add(value float32) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockFloat32(preds, highestLocked)
@@ -172,8 +183,8 @@ func (s *Float32Set) Add(value float32) bool {
 
 		nn := newFloat32Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat32(preds, highestLocked)
@@ -202,10 +213,10 @@ func (s *Float32Set) randomlevel() int {
 func (s *Float32Set) Contains(value float32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -227,7 +238,7 @@ func (s *Float32Set) Remove(value float32) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -259,7 +270,7 @@ func (s *Float32Set) Remove(value float32) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockFloat32(preds, highestLocked)
@@ -268,7 +279,7 @@ func (s *Float32Set) Remove(value float32) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockFloat32(preds, highestLocked)
@@ -282,16 +293,16 @@ func (s *Float32Set) Remove(value float32) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Float32Set) Range(f func(value float32) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -309,26 +320,37 @@ type Float32SetDesc struct {
 
 type float32NodeDesc struct {
 	value float32
-	next  []*float32NodeDesc
+	next  optionalArray // [level]*float32NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newFloat32NodeDesc(value float32, level int) *float32NodeDesc {
-	return &float32NodeDesc{
+	node := &float32NodeDesc{
 		value: value,
-		next:  make([]*float32NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *float32NodeDesc) loadNext(i int) *float32NodeDesc {
-	return (*float32NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*float32NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *float32NodeDesc) storeNext(i int, node *float32NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *float32NodeDesc) atomicLoadNext(i int) *float32NodeDesc {
+	return (*float32NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *float32NodeDesc) atomicStoreNext(i int, node *float32NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *float32NodeDesc) lessthan(value float32) bool {
@@ -355,10 +377,10 @@ func (s *Float32SetDesc) findNodeRemove(value float32, preds *[maxLevel]*float32
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -376,10 +398,10 @@ func (s *Float32SetDesc) findNodeRemove(value float32, preds *[maxLevel]*float32
 func (s *Float32SetDesc) findNodeAdd(value float32, preds *[maxLevel]*float32NodeDesc, succs *[maxLevel]*float32NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -441,7 +463,7 @@ func (s *Float32SetDesc) Add(value float32) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockFloat32Desc(preds, highestLocked)
@@ -450,8 +472,8 @@ func (s *Float32SetDesc) Add(value float32) bool {
 
 		nn := newFloat32NodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat32Desc(preds, highestLocked)
@@ -480,10 +502,10 @@ func (s *Float32SetDesc) randomlevel() int {
 func (s *Float32SetDesc) Contains(value float32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -505,7 +527,7 @@ func (s *Float32SetDesc) Remove(value float32) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -537,7 +559,7 @@ func (s *Float32SetDesc) Remove(value float32) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockFloat32Desc(preds, highestLocked)
@@ -546,7 +568,7 @@ func (s *Float32SetDesc) Remove(value float32) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockFloat32Desc(preds, highestLocked)
@@ -560,16 +582,16 @@ func (s *Float32SetDesc) Remove(value float32) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Float32SetDesc) Range(f func(value float32) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -587,26 +609,37 @@ type Float64Set struct {
 
 type float64Node struct {
 	value float64
-	next  []*float64Node
+	next  optionalArray // [level]*float64Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newFloat64Node(value float64, level int) *float64Node {
-	return &float64Node{
+	node := &float64Node{
 		value: value,
-		next:  make([]*float64Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *float64Node) loadNext(i int) *float64Node {
-	return (*float64Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*float64Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *float64Node) storeNext(i int, node *float64Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *float64Node) atomicLoadNext(i int) *float64Node {
+	return (*float64Node)(n.next.atomicLoad(i))
+}
+
+func (n *float64Node) atomicStoreNext(i int, node *float64Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *float64Node) lessthan(value float64) bool {
@@ -633,10 +666,10 @@ func (s *Float64Set) findNodeRemove(value float64, preds *[maxLevel]*float64Node
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -654,10 +687,10 @@ func (s *Float64Set) findNodeRemove(value float64, preds *[maxLevel]*float64Node
 func (s *Float64Set) findNodeAdd(value float64, preds *[maxLevel]*float64Node, succs *[maxLevel]*float64Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -719,7 +752,7 @@ func (s *Float64Set) Add(value float64) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockFloat64(preds, highestLocked)
@@ -728,8 +761,8 @@ func (s *Float64Set) Add(value float64) bool {
 
 		nn := newFloat64Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat64(preds, highestLocked)
@@ -758,10 +791,10 @@ func (s *Float64Set) randomlevel() int {
 func (s *Float64Set) Contains(value float64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -783,7 +816,7 @@ func (s *Float64Set) Remove(value float64) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -815,7 +848,7 @@ func (s *Float64Set) Remove(value float64) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockFloat64(preds, highestLocked)
@@ -824,7 +857,7 @@ func (s *Float64Set) Remove(value float64) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockFloat64(preds, highestLocked)
@@ -838,16 +871,16 @@ func (s *Float64Set) Remove(value float64) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Float64Set) Range(f func(value float64) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -865,26 +898,37 @@ type Float64SetDesc struct {
 
 type float64NodeDesc struct {
 	value float64
-	next  []*float64NodeDesc
+	next  optionalArray // [level]*float64NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newFloat64NodeDesc(value float64, level int) *float64NodeDesc {
-	return &float64NodeDesc{
+	node := &float64NodeDesc{
 		value: value,
-		next:  make([]*float64NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *float64NodeDesc) loadNext(i int) *float64NodeDesc {
-	return (*float64NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*float64NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *float64NodeDesc) storeNext(i int, node *float64NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *float64NodeDesc) atomicLoadNext(i int) *float64NodeDesc {
+	return (*float64NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *float64NodeDesc) atomicStoreNext(i int, node *float64NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *float64NodeDesc) lessthan(value float64) bool {
@@ -911,10 +955,10 @@ func (s *Float64SetDesc) findNodeRemove(value float64, preds *[maxLevel]*float64
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -932,10 +976,10 @@ func (s *Float64SetDesc) findNodeRemove(value float64, preds *[maxLevel]*float64
 func (s *Float64SetDesc) findNodeAdd(value float64, preds *[maxLevel]*float64NodeDesc, succs *[maxLevel]*float64NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -997,7 +1041,7 @@ func (s *Float64SetDesc) Add(value float64) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockFloat64Desc(preds, highestLocked)
@@ -1006,8 +1050,8 @@ func (s *Float64SetDesc) Add(value float64) bool {
 
 		nn := newFloat64NodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat64Desc(preds, highestLocked)
@@ -1036,10 +1080,10 @@ func (s *Float64SetDesc) randomlevel() int {
 func (s *Float64SetDesc) Contains(value float64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -1061,7 +1105,7 @@ func (s *Float64SetDesc) Remove(value float64) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -1093,7 +1137,7 @@ func (s *Float64SetDesc) Remove(value float64) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockFloat64Desc(preds, highestLocked)
@@ -1102,7 +1146,7 @@ func (s *Float64SetDesc) Remove(value float64) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockFloat64Desc(preds, highestLocked)
@@ -1116,16 +1160,16 @@ func (s *Float64SetDesc) Remove(value float64) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Float64SetDesc) Range(f func(value float64) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -1143,26 +1187,37 @@ type Int32Set struct {
 
 type int32Node struct {
 	value int32
-	next  []*int32Node
+	next  optionalArray // [level]*int32Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newInt32Node(value int32, level int) *int32Node {
-	return &int32Node{
+	node := &int32Node{
 		value: value,
-		next:  make([]*int32Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *int32Node) loadNext(i int) *int32Node {
-	return (*int32Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*int32Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *int32Node) storeNext(i int, node *int32Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *int32Node) atomicLoadNext(i int) *int32Node {
+	return (*int32Node)(n.next.atomicLoad(i))
+}
+
+func (n *int32Node) atomicStoreNext(i int, node *int32Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *int32Node) lessthan(value int32) bool {
@@ -1189,10 +1244,10 @@ func (s *Int32Set) findNodeRemove(value int32, preds *[maxLevel]*int32Node, succ
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -1210,10 +1265,10 @@ func (s *Int32Set) findNodeRemove(value int32, preds *[maxLevel]*int32Node, succ
 func (s *Int32Set) findNodeAdd(value int32, preds *[maxLevel]*int32Node, succs *[maxLevel]*int32Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -1275,7 +1330,7 @@ func (s *Int32Set) Add(value int32) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt32(preds, highestLocked)
@@ -1284,8 +1339,8 @@ func (s *Int32Set) Add(value int32) bool {
 
 		nn := newInt32Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt32(preds, highestLocked)
@@ -1314,10 +1369,10 @@ func (s *Int32Set) randomlevel() int {
 func (s *Int32Set) Contains(value int32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -1339,7 +1394,7 @@ func (s *Int32Set) Remove(value int32) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -1371,7 +1426,7 @@ func (s *Int32Set) Remove(value int32) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt32(preds, highestLocked)
@@ -1380,7 +1435,7 @@ func (s *Int32Set) Remove(value int32) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockInt32(preds, highestLocked)
@@ -1394,16 +1449,16 @@ func (s *Int32Set) Remove(value int32) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Int32Set) Range(f func(value int32) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -1421,26 +1476,37 @@ type Int32SetDesc struct {
 
 type int32NodeDesc struct {
 	value int32
-	next  []*int32NodeDesc
+	next  optionalArray // [level]*int32NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newInt32NodeDesc(value int32, level int) *int32NodeDesc {
-	return &int32NodeDesc{
+	node := &int32NodeDesc{
 		value: value,
-		next:  make([]*int32NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *int32NodeDesc) loadNext(i int) *int32NodeDesc {
-	return (*int32NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*int32NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *int32NodeDesc) storeNext(i int, node *int32NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *int32NodeDesc) atomicLoadNext(i int) *int32NodeDesc {
+	return (*int32NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *int32NodeDesc) atomicStoreNext(i int, node *int32NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *int32NodeDesc) lessthan(value int32) bool {
@@ -1467,10 +1533,10 @@ func (s *Int32SetDesc) findNodeRemove(value int32, preds *[maxLevel]*int32NodeDe
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -1488,10 +1554,10 @@ func (s *Int32SetDesc) findNodeRemove(value int32, preds *[maxLevel]*int32NodeDe
 func (s *Int32SetDesc) findNodeAdd(value int32, preds *[maxLevel]*int32NodeDesc, succs *[maxLevel]*int32NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -1553,7 +1619,7 @@ func (s *Int32SetDesc) Add(value int32) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt32Desc(preds, highestLocked)
@@ -1562,8 +1628,8 @@ func (s *Int32SetDesc) Add(value int32) bool {
 
 		nn := newInt32NodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt32Desc(preds, highestLocked)
@@ -1592,10 +1658,10 @@ func (s *Int32SetDesc) randomlevel() int {
 func (s *Int32SetDesc) Contains(value int32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -1617,7 +1683,7 @@ func (s *Int32SetDesc) Remove(value int32) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -1649,7 +1715,7 @@ func (s *Int32SetDesc) Remove(value int32) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt32Desc(preds, highestLocked)
@@ -1658,7 +1724,7 @@ func (s *Int32SetDesc) Remove(value int32) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockInt32Desc(preds, highestLocked)
@@ -1672,16 +1738,16 @@ func (s *Int32SetDesc) Remove(value int32) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Int32SetDesc) Range(f func(value int32) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -1699,26 +1765,37 @@ type Int16Set struct {
 
 type int16Node struct {
 	value int16
-	next  []*int16Node
+	next  optionalArray // [level]*int16Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newInt16Node(value int16, level int) *int16Node {
-	return &int16Node{
+	node := &int16Node{
 		value: value,
-		next:  make([]*int16Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *int16Node) loadNext(i int) *int16Node {
-	return (*int16Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*int16Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *int16Node) storeNext(i int, node *int16Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *int16Node) atomicLoadNext(i int) *int16Node {
+	return (*int16Node)(n.next.atomicLoad(i))
+}
+
+func (n *int16Node) atomicStoreNext(i int, node *int16Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *int16Node) lessthan(value int16) bool {
@@ -1745,10 +1822,10 @@ func (s *Int16Set) findNodeRemove(value int16, preds *[maxLevel]*int16Node, succ
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -1766,10 +1843,10 @@ func (s *Int16Set) findNodeRemove(value int16, preds *[maxLevel]*int16Node, succ
 func (s *Int16Set) findNodeAdd(value int16, preds *[maxLevel]*int16Node, succs *[maxLevel]*int16Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -1831,7 +1908,7 @@ func (s *Int16Set) Add(value int16) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt16(preds, highestLocked)
@@ -1840,8 +1917,8 @@ func (s *Int16Set) Add(value int16) bool {
 
 		nn := newInt16Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt16(preds, highestLocked)
@@ -1870,10 +1947,10 @@ func (s *Int16Set) randomlevel() int {
 func (s *Int16Set) Contains(value int16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -1895,7 +1972,7 @@ func (s *Int16Set) Remove(value int16) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -1927,7 +2004,7 @@ func (s *Int16Set) Remove(value int16) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt16(preds, highestLocked)
@@ -1936,7 +2013,7 @@ func (s *Int16Set) Remove(value int16) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockInt16(preds, highestLocked)
@@ -1950,16 +2027,16 @@ func (s *Int16Set) Remove(value int16) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Int16Set) Range(f func(value int16) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -1977,26 +2054,37 @@ type Int16SetDesc struct {
 
 type int16NodeDesc struct {
 	value int16
-	next  []*int16NodeDesc
+	next  optionalArray // [level]*int16NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newInt16NodeDesc(value int16, level int) *int16NodeDesc {
-	return &int16NodeDesc{
+	node := &int16NodeDesc{
 		value: value,
-		next:  make([]*int16NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *int16NodeDesc) loadNext(i int) *int16NodeDesc {
-	return (*int16NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*int16NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *int16NodeDesc) storeNext(i int, node *int16NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *int16NodeDesc) atomicLoadNext(i int) *int16NodeDesc {
+	return (*int16NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *int16NodeDesc) atomicStoreNext(i int, node *int16NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *int16NodeDesc) lessthan(value int16) bool {
@@ -2023,10 +2111,10 @@ func (s *Int16SetDesc) findNodeRemove(value int16, preds *[maxLevel]*int16NodeDe
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2044,10 +2132,10 @@ func (s *Int16SetDesc) findNodeRemove(value int16, preds *[maxLevel]*int16NodeDe
 func (s *Int16SetDesc) findNodeAdd(value int16, preds *[maxLevel]*int16NodeDesc, succs *[maxLevel]*int16NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2109,7 +2197,7 @@ func (s *Int16SetDesc) Add(value int16) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt16Desc(preds, highestLocked)
@@ -2118,8 +2206,8 @@ func (s *Int16SetDesc) Add(value int16) bool {
 
 		nn := newInt16NodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt16Desc(preds, highestLocked)
@@ -2148,10 +2236,10 @@ func (s *Int16SetDesc) randomlevel() int {
 func (s *Int16SetDesc) Contains(value int16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -2173,7 +2261,7 @@ func (s *Int16SetDesc) Remove(value int16) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -2205,7 +2293,7 @@ func (s *Int16SetDesc) Remove(value int16) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt16Desc(preds, highestLocked)
@@ -2214,7 +2302,7 @@ func (s *Int16SetDesc) Remove(value int16) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockInt16Desc(preds, highestLocked)
@@ -2228,16 +2316,16 @@ func (s *Int16SetDesc) Remove(value int16) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Int16SetDesc) Range(f func(value int16) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -2255,26 +2343,37 @@ type IntSet struct {
 
 type intNode struct {
 	value int
-	next  []*intNode
+	next  optionalArray // [level]*intNode
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newIntNode(value int, level int) *intNode {
-	return &intNode{
+	node := &intNode{
 		value: value,
-		next:  make([]*intNode, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *intNode) loadNext(i int) *intNode {
-	return (*intNode)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*intNode)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *intNode) storeNext(i int, node *intNode) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *intNode) atomicLoadNext(i int) *intNode {
+	return (*intNode)(n.next.atomicLoad(i))
+}
+
+func (n *intNode) atomicStoreNext(i int, node *intNode) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *intNode) lessthan(value int) bool {
@@ -2301,10 +2400,10 @@ func (s *IntSet) findNodeRemove(value int, preds *[maxLevel]*intNode, succs *[ma
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2322,10 +2421,10 @@ func (s *IntSet) findNodeRemove(value int, preds *[maxLevel]*intNode, succs *[ma
 func (s *IntSet) findNodeAdd(value int, preds *[maxLevel]*intNode, succs *[maxLevel]*intNode) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2387,7 +2486,7 @@ func (s *IntSet) Add(value int) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockInt(preds, highestLocked)
@@ -2396,8 +2495,8 @@ func (s *IntSet) Add(value int) bool {
 
 		nn := newIntNode(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt(preds, highestLocked)
@@ -2426,10 +2525,10 @@ func (s *IntSet) randomlevel() int {
 func (s *IntSet) Contains(value int) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -2451,7 +2550,7 @@ func (s *IntSet) Remove(value int) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -2483,7 +2582,7 @@ func (s *IntSet) Remove(value int) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockInt(preds, highestLocked)
@@ -2492,7 +2591,7 @@ func (s *IntSet) Remove(value int) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockInt(preds, highestLocked)
@@ -2506,16 +2605,16 @@ func (s *IntSet) Remove(value int) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *IntSet) Range(f func(value int) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -2533,26 +2632,37 @@ type IntSetDesc struct {
 
 type intNodeDesc struct {
 	value int
-	next  []*intNodeDesc
+	next  optionalArray // [level]*intNodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newIntNodeDesc(value int, level int) *intNodeDesc {
-	return &intNodeDesc{
+	node := &intNodeDesc{
 		value: value,
-		next:  make([]*intNodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *intNodeDesc) loadNext(i int) *intNodeDesc {
-	return (*intNodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*intNodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *intNodeDesc) storeNext(i int, node *intNodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *intNodeDesc) atomicLoadNext(i int) *intNodeDesc {
+	return (*intNodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *intNodeDesc) atomicStoreNext(i int, node *intNodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *intNodeDesc) lessthan(value int) bool {
@@ -2579,10 +2689,10 @@ func (s *IntSetDesc) findNodeRemove(value int, preds *[maxLevel]*intNodeDesc, su
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2600,10 +2710,10 @@ func (s *IntSetDesc) findNodeRemove(value int, preds *[maxLevel]*intNodeDesc, su
 func (s *IntSetDesc) findNodeAdd(value int, preds *[maxLevel]*intNodeDesc, succs *[maxLevel]*intNodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2665,7 +2775,7 @@ func (s *IntSetDesc) Add(value int) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockIntDesc(preds, highestLocked)
@@ -2674,8 +2784,8 @@ func (s *IntSetDesc) Add(value int) bool {
 
 		nn := newIntNodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockIntDesc(preds, highestLocked)
@@ -2704,10 +2814,10 @@ func (s *IntSetDesc) randomlevel() int {
 func (s *IntSetDesc) Contains(value int) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -2729,7 +2839,7 @@ func (s *IntSetDesc) Remove(value int) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -2761,7 +2871,7 @@ func (s *IntSetDesc) Remove(value int) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockIntDesc(preds, highestLocked)
@@ -2770,7 +2880,7 @@ func (s *IntSetDesc) Remove(value int) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockIntDesc(preds, highestLocked)
@@ -2784,16 +2894,16 @@ func (s *IntSetDesc) Remove(value int) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *IntSetDesc) Range(f func(value int) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -2811,26 +2921,37 @@ type Uint64Set struct {
 
 type uint64Node struct {
 	value uint64
-	next  []*uint64Node
+	next  optionalArray // [level]*uint64Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUuint64Node(value uint64, level int) *uint64Node {
-	return &uint64Node{
+	node := &uint64Node{
 		value: value,
-		next:  make([]*uint64Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uint64Node) loadNext(i int) *uint64Node {
-	return (*uint64Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uint64Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uint64Node) storeNext(i int, node *uint64Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uint64Node) atomicLoadNext(i int) *uint64Node {
+	return (*uint64Node)(n.next.atomicLoad(i))
+}
+
+func (n *uint64Node) atomicStoreNext(i int, node *uint64Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uint64Node) lessthan(value uint64) bool {
@@ -2857,10 +2978,10 @@ func (s *Uint64Set) findNodeRemove(value uint64, preds *[maxLevel]*uint64Node, s
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2878,10 +2999,10 @@ func (s *Uint64Set) findNodeRemove(value uint64, preds *[maxLevel]*uint64Node, s
 func (s *Uint64Set) findNodeAdd(value uint64, preds *[maxLevel]*uint64Node, succs *[maxLevel]*uint64Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -2943,7 +3064,7 @@ func (s *Uint64Set) Add(value uint64) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint64(preds, highestLocked)
@@ -2952,8 +3073,8 @@ func (s *Uint64Set) Add(value uint64) bool {
 
 		nn := newUuint64Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint64(preds, highestLocked)
@@ -2982,10 +3103,10 @@ func (s *Uint64Set) randomlevel() int {
 func (s *Uint64Set) Contains(value uint64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -3007,7 +3128,7 @@ func (s *Uint64Set) Remove(value uint64) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -3039,7 +3160,7 @@ func (s *Uint64Set) Remove(value uint64) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint64(preds, highestLocked)
@@ -3048,7 +3169,7 @@ func (s *Uint64Set) Remove(value uint64) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint64(preds, highestLocked)
@@ -3062,16 +3183,16 @@ func (s *Uint64Set) Remove(value uint64) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Uint64Set) Range(f func(value uint64) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -3089,26 +3210,37 @@ type Uint64SetDesc struct {
 
 type uint64NodeDesc struct {
 	value uint64
-	next  []*uint64NodeDesc
+	next  optionalArray // [level]*uint64NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUuint64NodeDescDesc(value uint64, level int) *uint64NodeDesc {
-	return &uint64NodeDesc{
+	node := &uint64NodeDesc{
 		value: value,
-		next:  make([]*uint64NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uint64NodeDesc) loadNext(i int) *uint64NodeDesc {
-	return (*uint64NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uint64NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uint64NodeDesc) storeNext(i int, node *uint64NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uint64NodeDesc) atomicLoadNext(i int) *uint64NodeDesc {
+	return (*uint64NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *uint64NodeDesc) atomicStoreNext(i int, node *uint64NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uint64NodeDesc) lessthan(value uint64) bool {
@@ -3135,10 +3267,10 @@ func (s *Uint64SetDesc) findNodeRemove(value uint64, preds *[maxLevel]*uint64Nod
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3156,10 +3288,10 @@ func (s *Uint64SetDesc) findNodeRemove(value uint64, preds *[maxLevel]*uint64Nod
 func (s *Uint64SetDesc) findNodeAdd(value uint64, preds *[maxLevel]*uint64NodeDesc, succs *[maxLevel]*uint64NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3221,7 +3353,7 @@ func (s *Uint64SetDesc) Add(value uint64) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint64Desc(preds, highestLocked)
@@ -3230,8 +3362,8 @@ func (s *Uint64SetDesc) Add(value uint64) bool {
 
 		nn := newUuint64NodeDescDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint64Desc(preds, highestLocked)
@@ -3260,10 +3392,10 @@ func (s *Uint64SetDesc) randomlevel() int {
 func (s *Uint64SetDesc) Contains(value uint64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -3285,7 +3417,7 @@ func (s *Uint64SetDesc) Remove(value uint64) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -3317,7 +3449,7 @@ func (s *Uint64SetDesc) Remove(value uint64) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint64Desc(preds, highestLocked)
@@ -3326,7 +3458,7 @@ func (s *Uint64SetDesc) Remove(value uint64) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint64Desc(preds, highestLocked)
@@ -3340,16 +3472,16 @@ func (s *Uint64SetDesc) Remove(value uint64) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Uint64SetDesc) Range(f func(value uint64) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -3367,26 +3499,37 @@ type Uint32Set struct {
 
 type uint32Node struct {
 	value uint32
-	next  []*uint32Node
+	next  optionalArray // [level]*uint32Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUint32Node(value uint32, level int) *uint32Node {
-	return &uint32Node{
+	node := &uint32Node{
 		value: value,
-		next:  make([]*uint32Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uint32Node) loadNext(i int) *uint32Node {
-	return (*uint32Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uint32Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uint32Node) storeNext(i int, node *uint32Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uint32Node) atomicLoadNext(i int) *uint32Node {
+	return (*uint32Node)(n.next.atomicLoad(i))
+}
+
+func (n *uint32Node) atomicStoreNext(i int, node *uint32Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uint32Node) lessthan(value uint32) bool {
@@ -3413,10 +3556,10 @@ func (s *Uint32Set) findNodeRemove(value uint32, preds *[maxLevel]*uint32Node, s
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3434,10 +3577,10 @@ func (s *Uint32Set) findNodeRemove(value uint32, preds *[maxLevel]*uint32Node, s
 func (s *Uint32Set) findNodeAdd(value uint32, preds *[maxLevel]*uint32Node, succs *[maxLevel]*uint32Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3499,7 +3642,7 @@ func (s *Uint32Set) Add(value uint32) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint32(preds, highestLocked)
@@ -3508,8 +3651,8 @@ func (s *Uint32Set) Add(value uint32) bool {
 
 		nn := newUint32Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint32(preds, highestLocked)
@@ -3538,10 +3681,10 @@ func (s *Uint32Set) randomlevel() int {
 func (s *Uint32Set) Contains(value uint32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -3563,7 +3706,7 @@ func (s *Uint32Set) Remove(value uint32) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -3595,7 +3738,7 @@ func (s *Uint32Set) Remove(value uint32) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint32(preds, highestLocked)
@@ -3604,7 +3747,7 @@ func (s *Uint32Set) Remove(value uint32) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint32(preds, highestLocked)
@@ -3618,16 +3761,16 @@ func (s *Uint32Set) Remove(value uint32) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Uint32Set) Range(f func(value uint32) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -3645,26 +3788,37 @@ type Uint32SetDesc struct {
 
 type uint32NodeDesc struct {
 	value uint32
-	next  []*uint32NodeDesc
+	next  optionalArray // [level]*uint32NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUint32NodeDesc(value uint32, level int) *uint32NodeDesc {
-	return &uint32NodeDesc{
+	node := &uint32NodeDesc{
 		value: value,
-		next:  make([]*uint32NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uint32NodeDesc) loadNext(i int) *uint32NodeDesc {
-	return (*uint32NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uint32NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uint32NodeDesc) storeNext(i int, node *uint32NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uint32NodeDesc) atomicLoadNext(i int) *uint32NodeDesc {
+	return (*uint32NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *uint32NodeDesc) atomicStoreNext(i int, node *uint32NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uint32NodeDesc) lessthan(value uint32) bool {
@@ -3691,10 +3845,10 @@ func (s *Uint32SetDesc) findNodeRemove(value uint32, preds *[maxLevel]*uint32Nod
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3712,10 +3866,10 @@ func (s *Uint32SetDesc) findNodeRemove(value uint32, preds *[maxLevel]*uint32Nod
 func (s *Uint32SetDesc) findNodeAdd(value uint32, preds *[maxLevel]*uint32NodeDesc, succs *[maxLevel]*uint32NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3777,7 +3931,7 @@ func (s *Uint32SetDesc) Add(value uint32) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint32Desc(preds, highestLocked)
@@ -3786,8 +3940,8 @@ func (s *Uint32SetDesc) Add(value uint32) bool {
 
 		nn := newUint32NodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint32Desc(preds, highestLocked)
@@ -3816,10 +3970,10 @@ func (s *Uint32SetDesc) randomlevel() int {
 func (s *Uint32SetDesc) Contains(value uint32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -3841,7 +3995,7 @@ func (s *Uint32SetDesc) Remove(value uint32) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -3873,7 +4027,7 @@ func (s *Uint32SetDesc) Remove(value uint32) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint32Desc(preds, highestLocked)
@@ -3882,7 +4036,7 @@ func (s *Uint32SetDesc) Remove(value uint32) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint32Desc(preds, highestLocked)
@@ -3896,16 +4050,16 @@ func (s *Uint32SetDesc) Remove(value uint32) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Uint32SetDesc) Range(f func(value uint32) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -3923,26 +4077,37 @@ type Uint16Set struct {
 
 type uint16Node struct {
 	value uint16
-	next  []*uint16Node
+	next  optionalArray // [level]*uint16Node
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUint16Node(value uint16, level int) *uint16Node {
-	return &uint16Node{
+	node := &uint16Node{
 		value: value,
-		next:  make([]*uint16Node, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uint16Node) loadNext(i int) *uint16Node {
-	return (*uint16Node)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uint16Node)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uint16Node) storeNext(i int, node *uint16Node) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uint16Node) atomicLoadNext(i int) *uint16Node {
+	return (*uint16Node)(n.next.atomicLoad(i))
+}
+
+func (n *uint16Node) atomicStoreNext(i int, node *uint16Node) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uint16Node) lessthan(value uint16) bool {
@@ -3969,10 +4134,10 @@ func (s *Uint16Set) findNodeRemove(value uint16, preds *[maxLevel]*uint16Node, s
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -3990,10 +4155,10 @@ func (s *Uint16Set) findNodeRemove(value uint16, preds *[maxLevel]*uint16Node, s
 func (s *Uint16Set) findNodeAdd(value uint16, preds *[maxLevel]*uint16Node, succs *[maxLevel]*uint16Node) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4055,7 +4220,7 @@ func (s *Uint16Set) Add(value uint16) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint16(preds, highestLocked)
@@ -4064,8 +4229,8 @@ func (s *Uint16Set) Add(value uint16) bool {
 
 		nn := newUint16Node(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint16(preds, highestLocked)
@@ -4094,10 +4259,10 @@ func (s *Uint16Set) randomlevel() int {
 func (s *Uint16Set) Contains(value uint16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -4119,7 +4284,7 @@ func (s *Uint16Set) Remove(value uint16) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -4151,7 +4316,7 @@ func (s *Uint16Set) Remove(value uint16) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint16(preds, highestLocked)
@@ -4160,7 +4325,7 @@ func (s *Uint16Set) Remove(value uint16) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint16(preds, highestLocked)
@@ -4174,16 +4339,16 @@ func (s *Uint16Set) Remove(value uint16) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Uint16Set) Range(f func(value uint16) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -4201,26 +4366,37 @@ type Uint16SetDesc struct {
 
 type uint16NodeDesc struct {
 	value uint16
-	next  []*uint16NodeDesc
+	next  optionalArray // [level]*uint16NodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUint16NodeDesc(value uint16, level int) *uint16NodeDesc {
-	return &uint16NodeDesc{
+	node := &uint16NodeDesc{
 		value: value,
-		next:  make([]*uint16NodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uint16NodeDesc) loadNext(i int) *uint16NodeDesc {
-	return (*uint16NodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uint16NodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uint16NodeDesc) storeNext(i int, node *uint16NodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uint16NodeDesc) atomicLoadNext(i int) *uint16NodeDesc {
+	return (*uint16NodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *uint16NodeDesc) atomicStoreNext(i int, node *uint16NodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uint16NodeDesc) lessthan(value uint16) bool {
@@ -4247,10 +4423,10 @@ func (s *Uint16SetDesc) findNodeRemove(value uint16, preds *[maxLevel]*uint16Nod
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4268,10 +4444,10 @@ func (s *Uint16SetDesc) findNodeRemove(value uint16, preds *[maxLevel]*uint16Nod
 func (s *Uint16SetDesc) findNodeAdd(value uint16, preds *[maxLevel]*uint16NodeDesc, succs *[maxLevel]*uint16NodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4333,7 +4509,7 @@ func (s *Uint16SetDesc) Add(value uint16) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint16Desc(preds, highestLocked)
@@ -4342,8 +4518,8 @@ func (s *Uint16SetDesc) Add(value uint16) bool {
 
 		nn := newUint16NodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint16Desc(preds, highestLocked)
@@ -4372,10 +4548,10 @@ func (s *Uint16SetDesc) randomlevel() int {
 func (s *Uint16SetDesc) Contains(value uint16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -4397,7 +4573,7 @@ func (s *Uint16SetDesc) Remove(value uint16) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -4429,7 +4605,7 @@ func (s *Uint16SetDesc) Remove(value uint16) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint16Desc(preds, highestLocked)
@@ -4438,7 +4614,7 @@ func (s *Uint16SetDesc) Remove(value uint16) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint16Desc(preds, highestLocked)
@@ -4452,16 +4628,16 @@ func (s *Uint16SetDesc) Remove(value uint16) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *Uint16SetDesc) Range(f func(value uint16) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -4479,26 +4655,37 @@ type UintSet struct {
 
 type uintNode struct {
 	value uint
-	next  []*uintNode
+	next  optionalArray // [level]*uintNode
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUintNode(value uint, level int) *uintNode {
-	return &uintNode{
+	node := &uintNode{
 		value: value,
-		next:  make([]*uintNode, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uintNode) loadNext(i int) *uintNode {
-	return (*uintNode)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uintNode)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uintNode) storeNext(i int, node *uintNode) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uintNode) atomicLoadNext(i int) *uintNode {
+	return (*uintNode)(n.next.atomicLoad(i))
+}
+
+func (n *uintNode) atomicStoreNext(i int, node *uintNode) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uintNode) lessthan(value uint) bool {
@@ -4525,10 +4712,10 @@ func (s *UintSet) findNodeRemove(value uint, preds *[maxLevel]*uintNode, succs *
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4546,10 +4733,10 @@ func (s *UintSet) findNodeRemove(value uint, preds *[maxLevel]*uintNode, succs *
 func (s *UintSet) findNodeAdd(value uint, preds *[maxLevel]*uintNode, succs *[maxLevel]*uintNode) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4611,7 +4798,7 @@ func (s *UintSet) Add(value uint) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUint(preds, highestLocked)
@@ -4620,8 +4807,8 @@ func (s *UintSet) Add(value uint) bool {
 
 		nn := newUintNode(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint(preds, highestLocked)
@@ -4650,10 +4837,10 @@ func (s *UintSet) randomlevel() int {
 func (s *UintSet) Contains(value uint) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -4675,7 +4862,7 @@ func (s *UintSet) Remove(value uint) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -4707,7 +4894,7 @@ func (s *UintSet) Remove(value uint) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUint(preds, highestLocked)
@@ -4716,7 +4903,7 @@ func (s *UintSet) Remove(value uint) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUint(preds, highestLocked)
@@ -4730,16 +4917,16 @@ func (s *UintSet) Remove(value uint) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *UintSet) Range(f func(value uint) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -4757,26 +4944,37 @@ type UintSetDesc struct {
 
 type uintNodeDesc struct {
 	value uint
-	next  []*uintNodeDesc
+	next  optionalArray // [level]*uintNodeDesc
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newUintNodeDesc(value uint, level int) *uintNodeDesc {
-	return &uintNodeDesc{
+	node := &uintNodeDesc{
 		value: value,
-		next:  make([]*uintNodeDesc, level),
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *uintNodeDesc) loadNext(i int) *uintNodeDesc {
-	return (*uintNodeDesc)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*uintNodeDesc)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *uintNodeDesc) storeNext(i int, node *uintNodeDesc) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *uintNodeDesc) atomicLoadNext(i int) *uintNodeDesc {
+	return (*uintNodeDesc)(n.next.atomicLoad(i))
+}
+
+func (n *uintNodeDesc) atomicStoreNext(i int, node *uintNodeDesc) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 func (n *uintNodeDesc) lessthan(value uint) bool {
@@ -4803,10 +5001,10 @@ func (s *UintSetDesc) findNodeRemove(value uint, preds *[maxLevel]*uintNodeDesc,
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4824,10 +5022,10 @@ func (s *UintSetDesc) findNodeRemove(value uint, preds *[maxLevel]*uintNodeDesc,
 func (s *UintSetDesc) findNodeAdd(value uint, preds *[maxLevel]*uintNodeDesc, succs *[maxLevel]*uintNodeDesc) int {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.lessthan(value) {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -4889,7 +5087,7 @@ func (s *UintSetDesc) Add(value uint) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockUintDesc(preds, highestLocked)
@@ -4898,8 +5096,8 @@ func (s *UintSetDesc) Add(value uint) bool {
 
 		nn := newUintNodeDesc(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockUintDesc(preds, highestLocked)
@@ -4928,10 +5126,10 @@ func (s *UintSetDesc) randomlevel() int {
 func (s *UintSetDesc) Contains(value uint) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.lessthan(value) {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -4953,7 +5151,7 @@ func (s *UintSetDesc) Remove(value uint) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -4985,7 +5183,7 @@ func (s *UintSetDesc) Remove(value uint) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockUintDesc(preds, highestLocked)
@@ -4994,7 +5192,7 @@ func (s *UintSetDesc) Remove(value uint) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockUintDesc(preds, highestLocked)
@@ -5008,16 +5206,16 @@ func (s *UintSetDesc) Remove(value uint) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *UintSetDesc) Range(f func(value uint) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
@@ -5036,27 +5234,38 @@ type StringSet struct {
 type stringNode struct {
 	value string
 	score uint64
-	next  []*stringNode
+	next  optionalArray // [level]*stringNode
 	mu    sync.Mutex
 	flags bitflag
+	level uint32
 }
 
 func newStringNode(value string, level int) *stringNode {
-	return &stringNode{
-		value: value,
+	node := &stringNode{
 		score: hash(value),
-		next:  make([]*stringNode, level),
+		value: value,
+		level: uint32(level),
 	}
+	if level > op1 {
+		node.next.extra = new([op2]unsafe.Pointer)
+	}
+	return node
 }
 
-// loadNext return `n.next[i]`(atomic)
 func (n *stringNode) loadNext(i int) *stringNode {
-	return (*stringNode)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i]))))
+	return (*stringNode)(n.next.load(i))
 }
 
-// storeNext same with `n.next[i] = node`(atomic)
 func (n *stringNode) storeNext(i int, node *stringNode) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next[i])), unsafe.Pointer(node))
+	n.next.store(i, unsafe.Pointer(node))
+}
+
+func (n *stringNode) atomicLoadNext(i int) *stringNode {
+	return (*stringNode)(n.next.atomicLoad(i))
+}
+
+func (n *stringNode) atomicStoreNext(i int, node *stringNode) {
+	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
 // NewString return an empty string skip set.
@@ -5076,10 +5285,10 @@ func (s *StringSet) findNodeRemove(value string, preds *[maxLevel]*stringNode, s
 	// lFound represents the index of the first layer at which it found a node.
 	lFound, x := -1, s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.cmp(score, value) < 0 {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -5098,10 +5307,10 @@ func (s *StringSet) findNodeAdd(value string, preds *[maxLevel]*stringNode, succ
 	score := hash(value)
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		succ := x.loadNext(i)
+		succ := x.atomicLoadNext(i)
 		for succ != nil && succ.cmp(score, value) < 0 {
 			x = succ
-			succ = x.loadNext(i)
+			succ = x.atomicLoadNext(i)
 		}
 		preds[i] = x
 		succs[i] = succ
@@ -5163,7 +5372,7 @@ func (s *StringSet) Add(value string) bool {
 			// It is valid if:
 			// 1. The previous node and next node both are not marked.
 			// 2. The previous node's next node is succ in this layer.
-			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.next[layer] == succ
+			valid = !pred.flags.Get(marked) && (succ == nil || !succ.flags.Get(marked)) && pred.loadNext(layer) == succ
 		}
 		if !valid {
 			unlockString(preds, highestLocked)
@@ -5172,8 +5381,8 @@ func (s *StringSet) Add(value string) bool {
 
 		nn := newStringNode(value, level)
 		for layer := 0; layer < level; layer++ {
-			nn.next[layer] = succs[layer]
-			preds[layer].storeNext(layer, nn)
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
 		}
 		nn.flags.SetTrue(fullyLinked)
 		unlockString(preds, highestLocked)
@@ -5203,10 +5412,10 @@ func (s *StringSet) Contains(value string) bool {
 	score := hash(value)
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
-		nex := x.loadNext(i)
+		nex := x.atomicLoadNext(i)
 		for nex != nil && nex.cmp(score, value) < 0 {
 			x = nex
-			nex = x.loadNext(i)
+			nex = x.atomicLoadNext(i)
 		}
 
 		// Check if the value already in the skip list.
@@ -5228,7 +5437,7 @@ func (s *StringSet) Remove(value string) bool {
 	for {
 		lFound := s.findNodeRemove(value, &preds, &succs)
 		if isMarked || // this process mark this node or we can find this node in the skip list
-			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (len(succs[lFound].next)-1) == lFound {
+			lFound != -1 && succs[lFound].flags.MGet(fullyLinked|marked, fullyLinked) && (int(succs[lFound].level)-1) == lFound {
 			if !isMarked { // we don't mark this node for now
 				nodeToRemove = succs[lFound]
 				topLayer = lFound
@@ -5260,7 +5469,7 @@ func (s *StringSet) Remove(value string) bool {
 				// It is valid if:
 				// 1. the previous node exists.
 				// 2. no another node has inserted into the skip list in this layer.
-				valid = !pred.flags.Get(marked) && pred.next[layer] == succ
+				valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ
 			}
 			if !valid {
 				unlockString(preds, highestLocked)
@@ -5269,7 +5478,7 @@ func (s *StringSet) Remove(value string) bool {
 			for i := topLayer; i >= 0; i-- {
 				// Now we own the `nodeToRemove`, no other goroutine will modify it.
 				// So we don't need `nodeToRemove.loadNext`
-				preds[i].storeNext(i, nodeToRemove.next[i])
+				preds[i].atomicStoreNext(i, nodeToRemove.loadNext(i))
 			}
 			nodeToRemove.mu.Unlock()
 			unlockString(preds, highestLocked)
@@ -5283,16 +5492,16 @@ func (s *StringSet) Remove(value string) bool {
 // Range calls f sequentially for each value present in the skip set.
 // If f returns false, range stops the iteration.
 func (s *StringSet) Range(f func(value string) bool) {
-	x := s.header.loadNext(0)
+	x := s.header.atomicLoadNext(0)
 	for x != nil {
 		if !x.flags.MGet(fullyLinked|marked, fullyLinked) {
-			x = x.loadNext(0)
+			x = x.atomicLoadNext(0)
 			continue
 		}
 		if !f(x.value) {
 			break
 		}
-		x = x.loadNext(0)
+		x = x.atomicLoadNext(0)
 	}
 }
 
