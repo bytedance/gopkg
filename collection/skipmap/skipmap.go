@@ -242,6 +242,7 @@ func (s *Int64Map) Load(key int64) (value interface{}, ok bool) {
 
 // LoadAndDelete deletes the value for a key, returning the previous value if any.
 // The loaded result reports whether the key was present.
+// (Modified from Delete)
 func (s *Int64Map) LoadAndDelete(key int64) (value interface{}, loaded bool) {
 	var (
 		nodeToDelete *int64Node
@@ -307,6 +308,7 @@ func (s *Int64Map) LoadAndDelete(key int64) (value interface{}, loaded bool) {
 // LoadOrStore returns the existing value for the key if present.
 // Otherwise, it stores and returns the given value.
 // The loaded result is true if the value was loaded, false if stored.
+// (Modified from Store)
 func (s *Int64Map) LoadOrStore(key int64, value interface{}) (actual interface{}, loaded bool) {
 	level := s.randomlevel()
 	var preds, succs [maxLevel]*int64Node
@@ -348,6 +350,63 @@ func (s *Int64Map) LoadOrStore(key int64, value interface{}) (actual interface{}
 			continue
 		}
 
+		nn := newInt64Node(key, value, level)
+		for layer := 0; layer < level; layer++ {
+			nn.storeNext(layer, succs[layer])
+			preds[layer].atomicStoreNext(layer, nn)
+		}
+		nn.flags.SetTrue(fullyLinked)
+		unlockInt64(preds, highestLocked)
+		atomic.AddInt64(&s.length, 1)
+		return value, false
+	}
+}
+
+// LoadOrStoreLazy returns the existing value for the key if present.
+// Otherwise, it stores and returns the given value from f, f will only be called once.
+// The loaded result is true if the value was loaded, false if stored.
+// (Modified from LoadOrStore)
+func (s *Int64Map) LoadOrStoreLazy(key int64, f func() interface{}) (actual interface{}, loaded bool) {
+	level := s.randomlevel()
+	var preds, succs [maxLevel]*int64Node
+	for {
+		nodeFound := s.findNode(key, &preds, &succs)
+		if nodeFound != nil { // indicating the key is already in the skip-list
+			if !nodeFound.flags.Get(marked) {
+				// We don't need to care about whether or not the node is fully linked,
+				// just return the value.
+				return nodeFound.loadVal(), true
+			}
+			// If the node is marked, represents some other goroutines is in the process of deleting this node,
+			// we need to add this node in next loop.
+			continue
+		}
+
+		// Add this node into skip list.
+		var (
+			highestLocked        = -1 // the highest level being locked by this process
+			valid                = true
+			pred, succ, prevPred *int64Node
+		)
+		for layer := 0; valid && layer < level; layer++ {
+			pred = preds[layer]   // target node's previous node
+			succ = succs[layer]   // target node's next node
+			if pred != prevPred { // the node in this layer could be locked by previous loop
+				pred.mu.Lock()
+				highestLocked = layer
+				prevPred = pred
+			}
+			// valid check if there is another node has inserted into the skip list in this layer during this process.
+			// It is valid if:
+			// 1. The previous node and next node both are not marked.
+			// 2. The previous node's next node is succ in this layer.
+			valid = !pred.flags.Get(marked) && pred.loadNext(layer) == succ && (succ == nil || !succ.flags.Get(marked))
+		}
+		if !valid {
+			unlockInt64(preds, highestLocked)
+			continue
+		}
+		value := f()
 		nn := newInt64Node(key, value, level)
 		for layer := 0; layer < level; layer++ {
 			nn.storeNext(layer, succs[layer])
