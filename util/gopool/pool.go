@@ -122,8 +122,8 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 		p.taskTail.next = t
 		p.taskTail = t
 	}
-	p.taskLock.Unlock()
 	atomic.AddInt32(&p.taskCount, 1)
+	p.taskLock.Unlock()
 	// The following two conditions are met:
 	// 1. the number of tasks is greater than the threshold.
 	// 2. The current number of workers is less than the upper limit p.cap.
