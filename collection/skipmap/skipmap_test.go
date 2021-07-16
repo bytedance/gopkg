@@ -230,6 +230,35 @@ func TestSkipMap(t *testing.T) {
 	if added != 1 {
 		t.Fatal("Only one LoadAndDelete can successfully get a value")
 	}
+
+	// Correntness 5. (LoadOrStoreLazy)
+	mp = NewInt()
+	tmpmap = NewInt64()
+	samekey = 123
+	added = 0
+	var fcalled int64
+	valuef := func() interface{} {
+		atomic.AddInt64(&fcalled, 1)
+		return fastrand.Int63()
+	}
+	for i := 1; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			actual, loaded := mp.LoadOrStoreLazy(samekey, valuef)
+			if !loaded {
+				atomic.AddInt64(&added, 1)
+			}
+			tmpmap.Store(actual.(int64), nil)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	if added != 1 || fcalled != 1 {
+		t.Fatal("only one LoadOrStoreLazy can successfully insert a key and value")
+	}
+	if tmpmap.Len() != 1 {
+		t.Fatal("only one value can be returned from LoadOrStoreLazy")
+	}
 }
 
 func TestSkipMapDesc(t *testing.T) {
