@@ -37,9 +37,18 @@ func Go(f func()) {
 	CtxGo(context.Background(), f)
 }
 
+func growth() [8 * 1024]int {
+	var arr [8 * 1024]int
+	return arr
+}
+
 // CtxGo is preferred than Go.
 func CtxGo(ctx context.Context, f func()) {
-	defaultPool.CtxGo(ctx, f)
+	// defaultPool.CtxGo(ctx, f)
+	go func() {
+		growth()
+		f()
+	}()
 }
 
 // SetCap is not recommended to be called, this func changes the global pool's capacity which will affect other callers.
