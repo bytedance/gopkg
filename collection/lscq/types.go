@@ -20,7 +20,7 @@ import (
 	"unsafe"
 )
 
-var uint64SCQpool = sync.Pool{
+var uint64SCQPool = sync.Pool{
 	New: func() interface{} {
 		return newUint64SCQ()
 	},
@@ -84,7 +84,7 @@ func (q *Uint64Queue) Enqueue(data uint64) bool {
 			cq.mu.Unlock()
 			continue
 		}
-		ncq := uint64SCQpool.Get().(*uint64SCQ) // create a new queue
+		ncq := uint64SCQPool.Get().(*uint64SCQ) // create a new queue
 		ncq.Enqueue(data)
 		// Try Add this queue into cq.next.
 		if atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&cq.next)), nil, unsafe.Pointer(ncq)) {
@@ -97,8 +97,21 @@ func (q *Uint64Queue) Enqueue(data uint64) bool {
 		// CAS failed, put this new SCQ into scqpool.
 		// No other goroutines will access this queue.
 		ncq.Dequeue()
-		uint64SCQpool.Put(ncq)
+		uint64SCQPool.Put(ncq)
 		cq.mu.Unlock()
+	}
+}
+
+func newUint64SCQ() *uint64SCQ {
+	ring := new([scqsize]scqNodeUint64)
+	for i := range ring {
+		ring[i].flags = 1<<63 + 1<<62 // newSCQFlags(true, true, 0)
+	}
+	return &uint64SCQ{
+		head:      scqsize,
+		tail:      scqsize,
+		threshold: -1,
+		ring:      ring,
 	}
 }
 
@@ -111,7 +124,7 @@ type uint64SCQ struct {
 	threshold int64
 	_         [cacheLineSize - unsafe.Sizeof(new(uint64))]byte
 	next      *uint64SCQ
-	ring      []scqNodeUint64
+	ring      *[scqsize]scqNodeUint64
 	mu        sync.Mutex
 }
 
@@ -120,35 +133,7 @@ type scqNodeUint64 struct {
 	data  uint64
 }
 
-func newUint64SCQ() *uint64SCQ {
-	ring := make([]scqNodeUint64, scqsize)
-	for i := range ring {
-		ring[i].flags = 1<<63 + 1<<62 // newSCQFlags(true, true, 0)
-	}
-	return &uint64SCQ{
-		head:      scqsize,
-		tail:      scqsize,
-		threshold: -1,
-		ring:      ring,
-	}
-}
-
-func (q *uint64SCQ) reset() {
-	q.tail = scqsize
-	q.head = scqsize
-	q.threshold = -1
-	q.next = nil
-	for i := range q.ring {
-		q.ring[i].flags = 1<<63 + 1<<62
-	}
-}
-
 func (q *uint64SCQ) Enqueue(data uint64) bool {
-	// If TAIL >= HEAD + scqsize, means this queue is full.
-	if uint64Get63(atomic.LoadUint64(&q.tail)) >= atomic.LoadUint64(&q.head)+scqsize {
-		return false
-	}
-
 	for {
 		// Increment the TAIL, try to occupy an entry.
 		tailvalue := atomic.AddUint64(&q.tail, 1)
@@ -163,7 +148,7 @@ func (q *uint64SCQ) Enqueue(data uint64) bool {
 		cycleT := T / scqsize
 	eqretry:
 		// Enqueue do not need data, if this entry is empty, we can assume the data is also empty.
-		entFlags := atomic.LoadUint64((*uint64)(unsafe.Pointer(entAddr)))
+		entFlags := atomic.LoadUint64(&entAddr.flags)
 		isSafe, isEmpty, cycleEnt := loadSCQFlags(entFlags)
 		if cycleEnt < cycleT && isEmpty && (isSafe || atomic.LoadUint64(&q.head) <= T) {
 			// We can use this entry for adding new data if
@@ -207,8 +192,10 @@ func (q *uint64SCQ) Dequeue() (data uint64, ok bool) {
 		ent := loadSCQNodeUint64(unsafe.Pointer(entAddr))
 		isSafe, isEmpty, cycleEnt := loadSCQFlags(ent.flags)
 		if cycleEnt == cycleH { // same cycle, return this entry directly
-			// We need to clear entry's data.
-			compareAndSwapSCQNodeUint64(entAddr, ent, scqNodeUint64{flags: newSCQFlags(isSafe, true, cycleEnt)})
+			// 1. Clear the data in this slot.
+			// 2. Set `isEmpty` to 1
+
+			resetNode(unsafe.Pointer(entAddr))
 			return ent.data, true
 		}
 		if cycleEnt < cycleH {

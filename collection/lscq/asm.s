@@ -45,12 +45,6 @@ TEXT ·loadSCQNodeUint64(SB),NOSPLIT,$0
 TEXT ·loadSCQNodePointer(SB),NOSPLIT,$0
 	JMP ·loadUint128(SB)
 
-TEXT ·compareAndSwapSCQNodePointer(SB),NOSPLIT,$0
-	JMP ·compareAndSwapUint128(SB)
-
-TEXT ·compareAndSwapSCQNodeUint64(SB),NOSPLIT,$0
-	JMP ·compareAndSwapUint128(SB)
-
 TEXT ·atomicTestAndSetFirstBit(SB),NOSPLIT,$0
 	MOVQ addr+0(FP), DX
 	LOCK
@@ -63,4 +57,16 @@ TEXT ·atomicTestAndSetSecondBit(SB),NOSPLIT,$0
 	LOCK
 	BTSQ $62,(DX)
 	MOVQ AX, val+8(FP)
+	RET
+
+TEXT ·resetNode(SB),NOSPLIT,$0
+	MOVQ addr+0(FP), DX
+	MOVQ $0, 8(DX)
+	LOCK
+	BTSQ $62, (DX)
+	RET
+
+TEXT ·runtimeEnableWriteBarrier(SB),NOSPLIT,$0
+	MOVL runtime·writeBarrier(SB), AX
+	MOVB AX, ret+0(FP)
 	RET
