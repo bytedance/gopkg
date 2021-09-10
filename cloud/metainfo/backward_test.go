@@ -102,3 +102,61 @@ func TestWithBackwardValues4(t *testing.T) {
 	assert(t, ok)
 	assert(t, val == "backward2")
 }
+
+func TestWithBackwardValues5(t *testing.T) {
+	ctx0 := context.Background()
+	ctx1 := metainfo.WithBackwardValues(ctx0)
+	ctx2 := metainfo.WithBackwardValuesToSend(ctx1)
+	ctx3 := metainfo.WithValue(ctx2, "key", "forward")
+
+	val, ok := metainfo.RecvBackwardValue(ctx3, "key")
+	assert(t, !ok)
+	assert(t, val == "")
+
+	m := metainfo.RecvAllBackwardValues(ctx3)
+	assert(t, m == nil)
+
+	m = metainfo.AllBackwardValuesToSend(ctx3)
+	assert(t, m == nil)
+
+	ok = metainfo.SetBackwardValue(ctx0, "key", "recv")
+	assert(t, !ok)
+
+	ok = metainfo.SendBackwardValue(ctx1, "key", "send")
+	assert(t, !ok)
+
+	ok = metainfo.SetBackwardValue(ctx3, "key", "recv")
+	assert(t, ok)
+
+	ok = metainfo.SendBackwardValue(ctx3, "key", "send")
+	assert(t, ok)
+
+	ok = metainfo.SetBackwardValues(ctx3)
+	assert(t, !ok)
+
+	val, ok = metainfo.RecvBackwardValue(ctx3, "key")
+	assert(t, ok && val == "recv")
+
+	ok = metainfo.SetBackwardValues(ctx3, "key", "recv0", "key1", "recv1")
+	assert(t, ok)
+
+	ok = metainfo.SetBackwardValues(ctx3, "key", "recv2", "key1")
+	assert(t, !ok)
+
+	ok = metainfo.SendBackwardValues(ctx3)
+	assert(t, !ok)
+
+	ok = metainfo.SendBackwardValues(ctx3, "key", "send0", "key1", "send1")
+	assert(t, ok)
+
+	ok = metainfo.SendBackwardValues(ctx3, "key", "send2", "key1")
+	assert(t, !ok)
+
+	m = metainfo.RecvAllBackwardValues(ctx3)
+	assert(t, len(m) == 2)
+	assert(t, m["key"] == "recv0" && m["key1"] == "recv1", m)
+
+	m = metainfo.AllBackwardValuesToSend(ctx3)
+	assert(t, len(m) == 2)
+	assert(t, m["key"] == "send0" && m["key1"] == "send1")
+}
