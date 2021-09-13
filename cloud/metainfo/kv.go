@@ -167,7 +167,9 @@ func search(kvs []kv, key string) (idx int, ok bool) {
 
 func remove(kvs []kv, key string) (res []kv, removed bool) {
 	if idx, ok := search(kvs, key); ok {
-		return append(kvs[:idx], kvs[idx+1:]...), true
+		res = append(res, kvs[:idx]...)
+		res = append(res, kvs[idx+1:]...)
+		return res, true
 	}
 	return kvs, false
 }

@@ -17,11 +17,13 @@ package circuitbreaker
 import (
 	"sync"
 	"time"
+
+	"github.com/bytedance/gopkg/collection/skipmap"
 )
 
 // panel manages a batch of circuitbreakers
 type panel struct {
-	breakers       sync.Map
+	breakers       *skipmap.StringMap
 	defaultOptions Options
 	changeHandler  PanelStateChangeHandler
 }
@@ -59,7 +61,7 @@ func NewPanel(changeHandler PanelStateChangeHandler,
 		return nil, err
 	}
 	p := &panel{
-		breakers:       sync.Map{},
+		breakers:       skipmap.NewString(),
 		defaultOptions: defaultOptions,
 		changeHandler:  changeHandler,
 	}
@@ -103,8 +105,8 @@ func (p *panel) RemoveBreaker(key string) {
 // DumpBreakers .
 func (p *panel) DumpBreakers() map[string]Breaker {
 	breakers := make(map[string]Breaker)
-	p.breakers.Range(func(key, value interface{}) bool {
-		breakers[key.(string)] = value.(*breaker)
+	p.breakers.Range(func(key string, value interface{}) bool {
+		breakers[key] = value.(*breaker)
 		return true
 	})
 	return breakers
@@ -176,7 +178,7 @@ func (t *sharedTicker) tick(ticker *time.Ticker) {
 		case <-ticker.C:
 			t.Lock()
 			for p := range t.panels {
-				p.breakers.Range(func(key, value interface{}) bool {
+				p.breakers.Range(func(_ string, value interface{}) bool {
 					if b, ok := value.(*breaker); ok {
 						b.metricer.tick()
 					}
