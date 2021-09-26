@@ -25,16 +25,16 @@ import (
 
 var workerPool sync.Pool
 
-func init() {
-	workerPool.New = newWorker
+func acquireWorker() *worker {
+	v := workerPool.Get()
+	if v == nil {
+		return &worker{}
+	}
+	return v.(*worker)
 }
 
 type worker struct {
 	pool *pool
-}
-
-func newWorker() interface{} {
-	return &worker{}
 }
 
 func (w *worker) run() {

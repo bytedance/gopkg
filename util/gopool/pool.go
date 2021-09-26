@@ -35,8 +35,12 @@ type Pool interface {
 
 var taskPool sync.Pool
 
-func init() {
-	taskPool.New = newTask
+func acquireTask() *task {
+	v := taskPool.Get()
+	if v == nil {
+		return &task{}
+	}
+	return v.(*task)
 }
 
 type task struct {
@@ -55,10 +59,6 @@ func (t *task) zero() {
 func (t *task) Recycle() {
 	t.zero()
 	taskPool.Put(t)
-}
-
-func newTask() interface{} {
-	return &task{}
 }
 
 type taskList struct {
@@ -111,7 +111,7 @@ func (p *pool) Go(f func()) {
 }
 
 func (p *pool) CtxGo(ctx context.Context, f func()) {
-	t := taskPool.Get().(*task)
+	t := acquireTask()
 	t.ctx = ctx
 	t.f = f
 	p.taskLock.Lock()
@@ -130,7 +130,7 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 	// or there are currently no workers.
 	if (atomic.LoadInt32(&p.taskCount) >= p.config.ScaleThreshold && p.WorkerCount() < atomic.LoadInt32(&p.cap)) || p.WorkerCount() == 0 {
 		p.incWorkerCount()
-		w := workerPool.Get().(*worker)
+		w := acquireWorker()
 		w.pool = p
 		w.run()
 	}
