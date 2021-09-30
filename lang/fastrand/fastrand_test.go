@@ -21,6 +21,9 @@ import (
 
 func TestAll(t *testing.T) {
 	_ = Uint32()
+
+	bytes := make([]byte, 1000)
+	_, _ = Read(bytes)
 }
 
 func BenchmarkSingleCore(b *testing.B) {
