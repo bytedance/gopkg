@@ -2,7 +2,7 @@ name: Minimal setup
 on:
   push:
     branches:
-      - test
+      - foo
 
 jobs:
   benchmark:
