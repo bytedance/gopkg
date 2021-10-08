@@ -13,27 +13,10 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      # Run benchmark with `go test -bench` and stores the output to a file
+      - name: Install benchmark tools
+        run: |
+          go get -u golang.org/x/perf/cmd/benchstat
+          go get -u github.com/willabides/benchdiff/cmd/benchdiff
       - name: Run benchmark
-        run: go test -bench 'BenchmarkAdd' ./collection/skipset | tee output.txt
-      # Download previous benchmark result from cache (if exists)
-      - name: Download previous benchmark data
-        uses: actions/cache@v1
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
-      # Run `github-action-benchmark` action
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          # What benchmark tool the output.txt came from
-          tool: 'go'
-          # Where the output from the benchmark tool is stored
-          output-file-path: output.txt
-          # Where the previous data file is stored
-          external-data-json-path: ./cache/benchmark-data.json
-          # Workflow will fail when an alert happens
-          fail-on-alert: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-always: true
-          # Enable alert commit comment
+        run: |
+          benchdiff --base-ref main --debug --benchstat-output=markdown
