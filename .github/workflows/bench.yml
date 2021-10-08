@@ -2,7 +2,7 @@ name: Minimal setup
 on:
   push:
     branches:
-      - develop
+      - test
 
 jobs:
   benchmark:
@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: git fetch origin develop
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
@@ -19,4 +20,4 @@ jobs:
           go get -u github.com/willabides/benchdiff/cmd/benchdiff
       - name: Run benchmark
         run: |
-          benchdiff --base-ref main --debug --benchstat-output=markdown
+          benchdiff --base-ref develop --debug --benchstat-output=markdown
