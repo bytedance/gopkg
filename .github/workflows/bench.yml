@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        uses: actions/setup-go@v2
+      - uses: actions/setup-go@v2
         with:
           go-version: 1.16
       # Run benchmark with `go test -bench` and stores the output to a file
