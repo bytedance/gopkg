@@ -26,7 +26,7 @@ jobs:
             --warmup-count=1
             --benchtime=10ms
             --tolerance=50
-            --base-ref develop
+            --base-ref origin/develop
             --debug
       # - name: Install benchmark tools
       #   run: |
