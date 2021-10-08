@@ -14,10 +14,24 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      - name: Install benchmark tools
-        run: |
-          go get -u golang.org/x/perf/cmd/benchstat
-          go get -u github.com/willabides/benchdiff/cmd/benchdiff
-      - name: Run benchmark
-        run: |
-          benchdiff --base-ref origin/develop --debug --benchstat-output=markdown
+      - uses: WillAbides/benchdiff-action@latest
+        with:
+          status_sha: ${{ github.sha }}
+          status_name: text-bench-result
+          status_on_degraded: neutral
+          benchdiff_args: |
+            --packages ./collection/skipset/
+            --cpu=1
+            --count=10
+            --warmup-count=1
+            --benchtime=10ms
+            --tolerance=50
+            --base-ref develop
+            --debug
+      # - name: Install benchmark tools
+      #   run: |
+      #     go get -u golang.org/x/perf/cmd/benchstat
+      #     go get -u github.com/willabides/benchdiff/cmd/benchdiff
+      # - name: Run benchmark
+      #   run: |
+      #     benchdiff --base-ref origin/develop --debug --benchstat-output=markdown
