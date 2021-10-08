@@ -11,6 +11,8 @@ jobs:
     name: Performance regression check
     runs-on: ubuntu-latest
     steps:
+      - run: |
+          echo "Comment on PR #${{ github.event.issue.number }}"
       - uses: khan/pull-request-comment-trigger@master
         id: check
         with:
