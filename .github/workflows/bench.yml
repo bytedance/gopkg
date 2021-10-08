@@ -45,7 +45,8 @@ jobs:
         id: couc
         with:
           issue-number: '${{ github.event.issue.number }}'
-          body: 'Result: ${{ github.event.issue.number }} ${{ steps.diff }}'
+          body: |
+            Result: ${{ github.event.issue.number }} ${{ steps.diff.benchstat_output }}
       - name: Check outputs
         run: |
           echo "Comment ID - ${{ steps.couc.outputs.comment-id }}"
