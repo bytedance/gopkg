@@ -1,20 +1,30 @@
 name: Minimal setup
+
 on:
-  push:
-    branches:
-      - foo
+  pull_request:
+    types: [opened]
+  issue_comment:
+    types: [created]
 
 jobs:
   benchmark:
     name: Performance regression check
     runs-on: ubuntu-latest
     steps:
+      - uses: khan/pull-request-comment-trigger@master
+        id: check
+        with:
+          trigger: '/benchdiff'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
       - uses: actions/checkout@v2
+        if: steps.check.outputs.triggered == 'true'
       - run: git fetch origin develop
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
       - uses: WillAbides/benchdiff-action@v0.3.3
+        id: diff
         with:
           status_sha: ${{ github.sha }}
           status_name: text-bench-result
@@ -28,10 +38,8 @@ jobs:
             --tolerance=50
             --base-ref origin/develop
             --debug
-      # - name: Install benchmark tools
-      #   run: |
-      #     go get -u golang.org/x/perf/cmd/benchstat
-      #     go get -u github.com/willabides/benchdiff/cmd/benchdiff
-      # - name: Run benchmark
-      #   run: |
-      #     benchdiff --base-ref origin/develop --debug --benchstat-output=markdown
+      - uses: unsplash/comment-on-pr@1.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          msg: '${{ steps.diff.benchstat_output }}'
