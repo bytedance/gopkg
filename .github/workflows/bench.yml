@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      - uses: WillAbides/benchdiff-action@latest
+      - uses: WillAbides/benchdiff-action@v0.3.3
         with:
           status_sha: ${{ github.sha }}
           status_name: text-bench-result
