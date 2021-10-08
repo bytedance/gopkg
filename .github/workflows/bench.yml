@@ -40,11 +40,6 @@ jobs:
             --tolerance=50
             --base-ref origin/develop
             --debug
-      - name: Comment PR
-        uses: thollander/actions-comment-pull-request@v1
-        with:
-          message: 
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create comment
         uses: peter-evans/create-or-update-comment@v1
         id: couc
