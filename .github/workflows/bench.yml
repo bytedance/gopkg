@@ -2,7 +2,7 @@ name: Minimal setup
 on:
   push:
     branches:
-      - master
+      - develop
 
 jobs:
   benchmark:
