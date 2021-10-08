@@ -43,5 +43,14 @@ jobs:
       - name: Comment PR
         uses: thollander/actions-comment-pull-request@v1
         with:
-          message: 'Result: ${{ steps.diff.benchstat_output }}'
+          message: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create comment
+        uses: peter-evans/create-or-update-comment@v1
+        id: couc
+        with:
+          issue-number: '${{ github.event.issue.number }}'
+          body: 'Result: ${{ steps.diff.benchstat_output }}'
+      - name: Check outputs
+        run: |
+          echo "Comment ID - ${{ steps.couc.outputs.comment-id }}"
