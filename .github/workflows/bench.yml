@@ -40,8 +40,8 @@ jobs:
             --tolerance=50
             --base-ref origin/develop
             --debug
-      - uses: unsplash/comment-on-pr@v1.3.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v1
         with:
-          msg: 'Result: ${{ steps.diff.benchstat_output }}'
+          message: 'Result: ${{ steps.diff.benchstat_output }}'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
