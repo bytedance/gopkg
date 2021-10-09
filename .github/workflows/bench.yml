@@ -44,6 +44,7 @@ jobs:
       - uses: WillAbides/benchdiff-action@v0.3.3
         id: diff
         with:
+          benchdiff_version: 0.7.1
           status_sha: ${{ github.sha }}
           status_name: Benchdiff result
           status_on_degraded: neutral
