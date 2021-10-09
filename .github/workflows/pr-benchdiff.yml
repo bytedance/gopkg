@@ -1,0 +1,90 @@
+name: Benchdiff
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  # https://github.community/t/cancelling-rest-of-job-if-condition-is-met/18181
+  trigger:
+    name: Pull request comment trigger
+    outputs:
+      triggered: ${{ steps.output.outputs.triggered }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check comment
+        uses: khan/pull-request-comment-trigger@master
+        id: check
+        with:
+          trigger: '/benchdiff'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - name: Set output
+        id: output
+        run: |
+          echo '::set-output name=triggered::${{ steps.check.outputs.triggered }}'
+
+  benchdiff:
+    name: Performance regression check
+    needs: [trigger]
+    if: needs.trigger.outputs.triggered == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Checkout pull request HEAD
+        id: head
+        run: |
+          git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
+          git checkout PR_HEAD
+          set -x
+          pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | sort | uniq)
+          if [ ! -z "${pkgs}" ]; then
+            pkgs=$(echo "${pkgs}" | awk '{print "./" $0}' | tr '\n' ' ')
+          fi
+          echo "::set-output name=pkgs::${pkgs}"
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - uses: WillAbides/benchdiff-action@v0.3.3
+        id: diff
+        if: steps.head.outputs.pkgs != ''
+        with:
+          benchdiff_version: 0.7.1
+          status_sha: ${{ github.sha }}
+          status_name: Benchdiff result
+          status_on_degraded: neutral
+          benchdiff_args: |
+            --packages="${{ steps.head.outputs.pkgs }}"
+            --count=10
+            --warmup-count=1
+            --benchtime=100000x
+            --benchmem
+            --tolerance=50
+            --base-ref=${{ github.sha }}
+            --debug
+      - name: Post benchdiff result via comment
+        uses: peter-evans/create-or-update-comment@v1
+        if: steps.head.outputs.pkgs != ''
+        with:
+          issue-number: '${{ github.event.issue.number }}'
+          body: |
+            ## Benchdiff Results
+            Benchmark Command: `${{ steps.diff.outputs.bench_command }}`
+            HEAD: ${{ steps.diff.outputs.head_sha }}
+            Base: ${{ steps.diff.outputs.base_sha }}
+            Degraded: ${{ steps.diff.outputs.degraded_result }}
+
+            <details>
+            <summary>Results</summary>
+
+            ${{ steps.diff.outputs.benchstat_output }}
+
+            </details>
+      - name: Nothing to post
+        uses: peter-evans/create-or-update-comment@v1
+        if: steps.head.outputs.pkgs == ''
+        with:
+          issue-number: '${{ github.event.issue.number }}'
+          body: |
+            There is no package to bench
