@@ -37,9 +37,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Checkout HEAD & BASE
-        # https://github.com/actions/checkout/issues/331
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         run: |
           git fetch origin ${{ env.BASE_REF }}
+          gh auth login --with-token process.env.GITHUB_TOKEN
           gh pr checkout ${{ github.event.issue.number }}
       - uses: actions/setup-go@v2
         with:
