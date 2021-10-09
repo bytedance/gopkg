@@ -42,7 +42,7 @@ func compareAndSwapSCQNodePointer(addr *scqNodePointer, old, new scqNodePointer)
 	if runtimeEnableWriteBarrier() {
 		runtimeatomicwb(&addr.data, new.data)
 	}
-	return compareAndSwapUint128((*uint128)(unsafe.Pointer(addr)), old.flags, uint64(uintptr(old.data)), new.flags, uint64(uintptr(new.data)))
+	return compareAndSwapUint128((*uint128)(runtimenoescape(unsafe.Pointer(addr))), old.flags, uint64(uintptr(old.data)), new.flags, uint64(uintptr(new.data)))
 }
 
 func compareAndSwapSCQNodeUint64(addr *scqNodeUint64, old, new scqNodeUint64) (swapped bool) {
@@ -54,6 +54,9 @@ func runtimeEnableWriteBarrier() bool
 //go:linkname runtimeatomicwb runtime.atomicwb
 //go:noescape
 func runtimeatomicwb(ptr *unsafe.Pointer, new unsafe.Pointer)
+
+//go:linkname runtimenoescape runtime.noescape
+func runtimenoescape(p unsafe.Pointer) unsafe.Pointer
 
 //go:nosplit
 func atomicWriteBarrier(ptr *unsafe.Pointer) {
