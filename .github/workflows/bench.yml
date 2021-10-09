@@ -61,7 +61,6 @@ jobs:
             --debug
       - name: Post benchdiff result via comment
         uses: peter-evans/create-or-update-comment@v1
-        id: couc
         if: steps.head.outputs.pkgs != ''
         with:
           issue-number: '${{ github.event.issue.number }}'
@@ -78,7 +77,6 @@ jobs:
             </details>
       - name: Nothing to post
         uses: peter-evans/create-or-update-comment@v1
-        id: couc
         if: steps.head.outputs.pkgs != ''
         with:
           issue-number: '${{ github.event.issue.number }}'
