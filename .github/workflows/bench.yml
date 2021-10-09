@@ -37,7 +37,7 @@ jobs:
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
           set -x
-          pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | sort | uniq)
+          pkgs="$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | sort | uniq)"
           if [ ! -z "${pkgs}" ]; then
             pkgs="$(echo $pkgs | awk '{print "./" $0}' | tr '\n' ' ')"
           fi
