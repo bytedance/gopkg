@@ -39,7 +39,7 @@ jobs:
           set -x
           pkgs="$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | sort | uniq)"
           if [ ! -z "${pkgs}" ]; then
-            pkgs="$(echo ${pkgs} | awk '{print "./" $0}')"
+            pkgs="$(echo "${pkgs}" | awk '{print "./" $0}')"
           fi
           echo "::set-output name=pkgs::${pkgs}"
       - uses: actions/setup-go@v2
