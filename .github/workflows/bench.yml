@@ -37,8 +37,8 @@ jobs:
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
           pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | uniq)
-          if [ ! -z ${pkg} ]; then
-            pkg=$(echo $pkg | sed 's/^/.\//')
+          if [ ! -z "${pkgs}" ]; then
+            pkgs=$(echo $pkgs | sed 's/^/.\//')
           fi
           echo "::set-output name=pkgs::${pkgs}"
       - uses: actions/setup-go@v2
@@ -84,4 +84,4 @@ jobs:
         with:
           issue-number: '${{ github.event.issue.number }}'
           body: |
-            There is no package to do bench
+            There is no package to bench
