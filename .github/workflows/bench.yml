@@ -9,15 +9,20 @@ on:
 jobs:
   trigger:
     name: Pull request comment trigger
+    outputs:
+      triggered: ${{ steps.output.outputs.triggered }}
     runs-on: ubuntu-latest
     steps:
-      - uses: khan/pull-request-comment-trigger@master
+      - name: Check comment
+        uses: khan/pull-request-comment-trigger@master
         id: check
         with:
           trigger: '/benchdiff'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-      - run: |
+      - name: Set output
+        id: output
+        run: |
           echo '::set-output name=triggered::${{ steps.check.outputs.triggered }}'
 
   benchdiff:
