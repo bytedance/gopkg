@@ -77,8 +77,8 @@ jobs:
             </details>
       - name: Nothing to post
         uses: peter-evans/create-or-update-comment@v1
-        if: steps.head.outputs.pkgs != ''
+        if: steps.head.outputs.pkgs == ''
         with:
           issue-number: '${{ github.event.issue.number }}'
           body: |
-            There is no packages to bench
+            There is no package to do bench
