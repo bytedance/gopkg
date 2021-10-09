@@ -36,8 +36,7 @@ jobs:
         run: |
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
-          PKGS=$(git diff --name-only | grep '.go$' | xargs -L1 dirname | uniq)
-          echo '::set-output name=pkgs::$PKGS'
+          echo "::set-output name=pkgs::$(git diff --name-only | grep '.go$' | xargs -L1 dirname | uniq)"
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
