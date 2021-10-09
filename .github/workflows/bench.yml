@@ -55,13 +55,13 @@ jobs:
           status_name: Benchdiff result
           status_on_degraded: neutral
           benchdiff_args: |
-            --packages '${{ steps.head.outputs.pkgs }}'
+            --packages="${{ steps.head.outputs.pkgs }}"
             --count=10
             --warmup-count=1
             --benchtime=100000x
             --benchmem
             --tolerance=50
-            --base-ref ${{ github.sha }}
+            --base-ref=${{ github.sha }}
             --debug
       - name: Post benchdiff result via comment
         uses: peter-evans/create-or-update-comment@v1
