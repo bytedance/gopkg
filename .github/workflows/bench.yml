@@ -1,8 +1,6 @@
 name: Benchdiff
 
 on:
-  pull_request:
-    types: [opened]
   issue_comment:
     types: [created]
 
@@ -31,18 +29,12 @@ jobs:
     needs: [trigger]
     if: needs.trigger.outputs.triggered == 'true'
     runs-on: ubuntu-latest
-    env:
-      # The git ref to be used as benchmark baseline
-      BASE_REF: develop
     steps:
       - uses: actions/checkout@v2
-      - name: Checkout HEAD & BASE
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - name: Checkout pull request HEAD
         run: |
-          git fetch origin ${{ env.BASE_REF }}
-          gh auth login --with-token process.env.GITHUB_TOKEN
-          gh pr checkout ${{ github.event.issue.number }}
+          git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
+          git checkout PR_HEAD
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
@@ -59,7 +51,7 @@ jobs:
             --warmup-count=1
             --benchtime=10ms
             --tolerance=50
-            --base-ref origin/${{ env.BASE_REF }}
+            --base-ref ${{ github.sha }}
             --debug
       - name: Create pull request comment
         uses: peter-evans/create-or-update-comment@v1
