@@ -37,11 +37,12 @@ jobs:
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
           pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | uniq)
+          echo === ${pkgs} ===
           if [ ! -z "${pkgs}" ]; then
-            pkgs=$(echo $pkgs | awk '{print "./" $0}')
+            pkgs=$(echo $pkgs | awk '{print "./" $0}' | tr '\n' ' ')
           fi
           echo "::set-output name=pkgs::${pkgs}"
-          echo ===${pkgs} ===
+          echo :${pkgs}
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
