@@ -7,21 +7,32 @@ on:
     types: [created]
 
 jobs:
-  benchmark:
-    name: Performance regression check
+  trigger:
+    name: Pull request comment trigger
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "Comment on PR #${{ github.event.issue.number }}"
       - uses: khan/pull-request-comment-trigger@master
         id: check
         with:
           trigger: '/benchdiff'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - run: |
+          echo '::set-output name=triggered::${{ steps.check.outputs.triggered }}'
+
+  benchdiff:
+    name: Performance regression check
+    needs: [trigger]
+    if: needs.trigger.outputs.triggered == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # The git ref to be used as benchmark baseline
+      BASE_REF: develop
+    steps:
       - uses: actions/checkout@v2
-        if: steps.check.outputs.triggered == 'true'
-      - run: git fetch origin develop
+      - name: Fetch baseline ref
+        run: |
+          git fetch origin ${{ env.BASE_REF }}
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
@@ -29,7 +40,7 @@ jobs:
         id: diff
         with:
           status_sha: ${{ github.sha }}
-          status_name: text-bench-result
+          status_name: Benchdiff result
           status_on_degraded: neutral
           benchdiff_args: |
             --packages ./collection/skipset/
@@ -38,9 +49,9 @@ jobs:
             --warmup-count=1
             --benchtime=10ms
             --tolerance=50
-            --base-ref origin/develop
+            --base-ref origin/${{ env.BASE_REF }}
             --debug
-      - name: Create comment
+      - name: Create pull request comment
         uses: peter-evans/create-or-update-comment@v1
         id: couc
         with:
@@ -53,9 +64,9 @@ jobs:
             Degraded: ${{ steps.diff.outputs.degraded_result }}
 
             <details>
-            Results
-            <summary></summary>
+            <summary>Results</summary>
             ${{ steps.diff.outputs.benchstat_output }}
             </details>
       - name: Check outputs
-        run: echo 'Comment ID - ${{ steps.couc.outputs.comment-id }}'
+        run: |
+          echo 'Comment ID - ${{ steps.couc.outputs.comment-id }}'
