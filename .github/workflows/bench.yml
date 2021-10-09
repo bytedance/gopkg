@@ -37,13 +37,14 @@ jobs:
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
           pkgs=$(git diff --name-only | grep '.go$' | xargs -L1 dirname | uniq)
-          [ -z ${pkgs} ] && pkgs='./...'
           echo "::set-output name=pkgs::${pkgs}"
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
+
       - uses: WillAbides/benchdiff-action@v0.3.3
         id: diff
+        if: steps.head.outputs.pkgs != ''
         with:
           benchdiff_version: 0.7.1
           status_sha: ${{ github.sha }}
@@ -58,9 +59,10 @@ jobs:
             --tolerance=50
             --base-ref ${{ github.sha }}
             --debug
-      - name: Create pull request comment
+      - name: Post benchdiff result via comment
         uses: peter-evans/create-or-update-comment@v1
         id: couc
+        if: steps.head.outputs.pkgs != ''
         with:
           issue-number: '${{ github.event.issue.number }}'
           body: |
@@ -74,6 +76,11 @@ jobs:
             <summary>Results</summary>
             ${{ steps.diff.outputs.benchstat_output }}
             </details>
-      - name: Check outputs
-        run: |
-          echo 'Comment ID - ${{ steps.couc.outputs.comment-id }}'
+      - name: Nothing to post
+        uses: peter-evans/create-or-update-comment@v1
+        id: couc
+        if: steps.head.outputs.pkgs != ''
+        with:
+          issue-number: '${{ github.event.issue.number }}'
+          body: |
+            There is no packages to bench
