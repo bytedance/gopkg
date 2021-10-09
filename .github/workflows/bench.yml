@@ -1,9 +1,8 @@
-name: Minimal setup
+name: Benchdiff
 
 on:
   pull_request:
-    types: [opened]
-  issue_comment:
+    types: [opened] issue_comment:
     types: [created]
 
 jobs:
@@ -46,7 +45,16 @@ jobs:
         with:
           issue-number: '${{ github.event.issue.number }}'
           body: |
-            Result: ${{ github.event.issue.number }} ${{ steps.diff.outputs.benchstat_output }}
+            ## Benchdiff Results
+            Benchmark Command: `${{ steps.diff.outputs.bench_command }}`
+            HEAD: ${{ steps.diff.outputs.head_sha }}
+            Base: ${{ steps.diff.outputs.base_sha }}
+            Degraded: ${{ steps.diff.outputs.degraded_result }}
+
+            <details>
+            Results
+            <summary></summary>
+            ${{ steps.diff.outputs.benchstat_output }}
+            </details>
       - name: Check outputs
-        run: |
-          echo "Comment ID - ${{ steps.couc.outputs.comment-id }}"
+        run: echo 'Comment ID - ${{ steps.couc.outputs.comment-id }}'
