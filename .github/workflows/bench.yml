@@ -36,7 +36,9 @@ jobs:
         run: |
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
-          echo "::set-output name=pkgs::$(git diff --name-only | grep '.go$' | xargs -L1 dirname | uniq)"
+          pkgs=$(git diff --name-only | grep '.go$' | xargs -L1 dirname | uniq)
+          [ -z ${pkgs} ] && pkgs='./...'
+          echo "::set-output name=pkgs::${pkgs}"
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
@@ -59,8 +61,7 @@ jobs:
       - name: Create pull request comment
         uses: peter-evans/create-or-update-comment@v1
         id: couc
-        with:
-          issue-number: '${{ github.event.issue.number }}'
+        with: issue-number: '${{ github.event.issue.number }}'
           body: |
             ## Benchdiff Results
             Benchmark Command: `${{ steps.diff.outputs.bench_command }}`
