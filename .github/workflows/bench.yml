@@ -55,7 +55,7 @@ jobs:
           status_name: Benchdiff result
           status_on_degraded: neutral
           benchdiff_args: |
-            --packages "${{ steps.head.outputs.pkgs }}"
+            --packages '${{ steps.head.outputs.pkgs }}'
             --count=10
             --warmup-count=1
             --benchtime=100000x
@@ -77,6 +77,7 @@ jobs:
 
             <details>
             <summary>Results</summary>
+
             ${{ steps.diff.outputs.benchstat_output }}
             </details>
       - name: Nothing to post
