@@ -38,7 +38,7 @@ jobs:
           git checkout PR_HEAD
           pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | uniq)
           if [ ! -z "${pkgs}" ]; then
-            pkgs=$(echo $pkgs | sed 's/^/.\//' | tr '\n' ' ')
+            pkgs=$(echo $pkgs | xargs print './%s ')
           fi
           echo "::set-output name=pkgs::${pkgs}"
           echo ===${pkgs} ===
