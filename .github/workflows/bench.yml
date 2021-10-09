@@ -32,9 +32,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Checkout pull request HEAD
+        id: head
         run: |
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
+          PKGS=$(git diff --name-only | grep '.go$' | xargs -L1 dirname | uniq)
+          echo '::set-output name=pkgs::$PKGS'
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
@@ -45,11 +48,11 @@ jobs:
           status_name: Benchdiff result
           status_on_degraded: neutral
           benchdiff_args: |
-            --packages ./collection/skipset/
-            --cpu=1
+            --packages ${{ steps.head.outputs.pkgs }}
             --count=10
             --warmup-count=1
-            --benchtime=10ms
+            --benchtime=100000x
+            --benchmem
             --tolerance=50
             --base-ref ${{ github.sha }}
             --debug
