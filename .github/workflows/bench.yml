@@ -7,6 +7,7 @@ on:
     types: [created]
 
 jobs:
+  # https://github.community/t/cancelling-rest-of-job-if-condition-is-met/18181
   trigger:
     name: Pull request comment trigger
     outputs:
@@ -35,9 +36,11 @@ jobs:
       BASE_REF: develop
     steps:
       - uses: actions/checkout@v2
-      - name: Fetch baseline ref
+      - name: Checkout HEAD & BASE
+        # https://github.com/actions/checkout/issues/331
         run: |
           git fetch origin ${{ env.BASE_REF }}
+          gh pr checkout ${{ github.event.issue.number }}
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
