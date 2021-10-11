@@ -34,10 +34,12 @@ jobs:
       - name: Checkout pull request HEAD
         id: head
         run: |
-          # Checkout HEAD of pull request
+          # Checkout HEAD of pull request and set its sha to step output
           git fetch origin pull/${{ github.event.issue.number }}/head:PR_HEAD
           git checkout PR_HEAD
-          # Set modified packages as step output
+          echo "::set-output name=head::$(git rev-parse HEAD)"
+
+          # Set modified packages to step output
           pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -L1 dirname | sort | uniq)
           if [ ! -z "${pkgs}" ]; then
             # awk: Add "./" prefix to let `go test` known they are relative paths
@@ -53,7 +55,7 @@ jobs:
         if: steps.head.outputs.pkgs != ''
         with:
           benchdiff_version: 0.7.1
-          status_sha: ${{ github.sha }}
+          status_sha: ${{ steps.head.outputs.head }}
           status_name: Benchdiff result
           status_on_degraded: neutral
           benchdiff_args: |
