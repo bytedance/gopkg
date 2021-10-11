@@ -61,10 +61,11 @@ jobs:
           # Set modified packages to step output
           # git diff: get difference between HEAD and baseline
           # grep: filter non-go files
+          # xargs -r: --no-run-if-empty, ignore empty line
           # xargs dirname: keep only the directory name (go packages)
           # xargs ls: filter non-exist files
           # sort | uniq: dedup
-          pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs dirname | xargs ls -d 2>/dev/null | sort | uniq)
+          pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -r dirname | xargs -r ls -d 2>/dev/null | sort | uniq)
           if [ ! -z "${pkgs}" ]; then
             # awk: Add "./" prefix to let `go test` known they are relative paths
             # tr: join paths to one line, otherwise benchdiff cannot recognize it
