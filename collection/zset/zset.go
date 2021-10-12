@@ -133,7 +133,7 @@ func (z *Float64Set) Add(score float64, value string) bool {
 // Returns score of the removed value and true if the node was found and deleted,
 // otherwise returns (0.0, false).
 //
-// Remove is the local replacement of ZREM command of redis.
+// Remove is the replacement of ZREM command of redis.
 func (z *Float64Set) Remove(value string) (float64, bool) {
 	z.mu.Lock()
 	defer z.mu.Unlock()
@@ -151,7 +151,7 @@ func (z *Float64Set) Remove(value string) (float64, bool) {
 // If value does not exist in the sorted set, it is added with incr as its score
 // (as if its previous score was zero).
 //
-// IncrBy is the local replacement of ZINCRBY command of redis.
+// IncrBy is the replacement of ZINCRBY command of redis.
 func (z *Float64Set) IncrBy(incr float64, value string) (float64, bool) {
 	z.mu.Lock()
 	defer z.mu.Unlock()
@@ -179,7 +179,7 @@ func (z *Float64Set) Contains(value string) bool {
 
 // Score returns the score of the value in the sorted set.
 //
-// Score is the local replacement of ZSCORE command of redis.
+// Score is the replacement of ZSCORE command of redis.
 func (z *Float64Set) Score(value string) (float64, bool) {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
@@ -194,7 +194,7 @@ func (z *Float64Set) Score(value string) (float64, bool) {
 // score has rank 0.
 // -1 is returned when value is not found.
 //
-// Rank is the local replacement of ZRANK command of redis.
+// Rank is the replacement of ZRANK command of redis.
 func (z *Float64Set) Rank(value string) int {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
@@ -213,7 +213,7 @@ func (z *Float64Set) Rank(value string) int {
 // score has rank 0.
 // -1 is returned when value is not found.
 //
-// RevRank is the local replacement of ZREVRANK command of redis.
+// RevRank is the replacement of ZREVRANK command of redis.
 func (z *Float64Set) RevRank(value string) int {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
@@ -229,7 +229,7 @@ func (z *Float64Set) RevRank(value string) int {
 // Count returns the number of elements in the sorted set at element with a score
 // between min and max (including elements with score equal to min or max).
 //
-// Count is the local replacement of ZCOUNT command of redis.
+// Count is the replacement of ZCOUNT command of redis.
 func (z *Float64Set) Count(min, max float64) int {
 	return z.CountWithOpt(min, max, Float64RangeOpt{})
 }
@@ -263,7 +263,7 @@ func (z *Float64Set) CountWithOpt(min, max float64, opt Float64RangeOpt) int {
 //
 // This function won't panic even when the given rank out of range.
 //
-// Range is the local replacement of ZRANGE command of redis.
+// Range is the replacement of ZRANGE command of redis.
 func (z *Float64Set) Range(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
@@ -293,7 +293,7 @@ func (z *Float64Set) Range(start, stop int) []Float64Node {
 // between min and max (including elements with score equal to min or max).
 // The elements are considered to be ordered from low to high scores.
 //
-// RangeByScore is the local replacement of ZRANGEBYSCORE command of redis.
+// RangeByScore is the replacement of ZRANGEBYSCORE command of redis.
 func (z *Float64Set) RangeByScore(min, max float64) []Float64Node {
 	return z.RangeByScoreWithOpt(min, max, Float64RangeOpt{})
 }
@@ -324,7 +324,7 @@ func (z *Float64Set) RangeByScoreWithOpt(min, max float64, opt Float64RangeOpt) 
 //
 // This function won't panic even when the given rank out of range.
 //
-// RevRange is the local replacement of ZREVRANGE command of redis.
+// RevRange is the replacement of ZREVRANGE command of redis.
 func (z *Float64Set) RevRange(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
@@ -354,7 +354,7 @@ func (z *Float64Set) RevRange(start, stop int) []Float64Node {
 // score between max and min (including elements with score equal to max or min).
 // The elements are considered to be ordered from high to low scores.
 //
-// RevRangeByScore is the local replacement of ZREVRANGEBYSCORE command of redis.
+// RevRangeByScore is the replacement of ZREVRANGEBYSCORE command of redis.
 func (z *Float64Set) RevRangeByScore(max, min float64) []Float64Node {
 	return z.RevRangeByScoreWithOpt(max, min, Float64RangeOpt{})
 }
@@ -381,7 +381,7 @@ func (z *Float64Set) RevRangeByScoreWithOpt(max, min float64, opt Float64RangeOp
 // offsets from the end of the sorted set, with -1 being the last element of the sorted set,
 // and so on.
 //
-// RemoveRangeByRank is the local replacement of ZREMRANGEBYRANK command of redis.
+// RemoveRangeByRank is the replacement of ZREMRANGEBYRANK command of redis.
 func (z *Float64Set) RemoveRangeByRank(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
@@ -400,7 +400,7 @@ func (z *Float64Set) RemoveRangeByRank(start, stop int) []Float64Node {
 // RemoveRangeByScore removes all elements in the sorted set stored with a score
 // between min and max (including elements with score equal to min or max).
 //
-// RemoveRangeByScore is the local replacement of ZREMRANGEBYSCORE command of redis.
+// RemoveRangeByScore is the replacement of ZREMRANGEBYSCORE command of redis.
 func (z *Float64Set) RemoveRangeByScore(min, max float64) []Float64Node {
 	return z.RevRangeByScoreWithOpt(min, max, Float64RangeOpt{})
 }
