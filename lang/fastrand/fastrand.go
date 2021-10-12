@@ -16,6 +16,8 @@
 package fastrand
 
 import (
+	"unsafe"
+
 	"github.com/bytedance/gopkg/internal/runtimex"
 )
 
@@ -120,4 +122,29 @@ func Uint32n(n uint32) uint32 {
 // Uint64n returns a pseudo-random number in [0,n).
 func Uint64n(n uint64) uint64 {
 	return Uint64() % n
+}
+
+// Read generates len(p) random bytes and writes them into p.
+// It always returns len(p) and a nil error. And it is safe
+// for concurrent use.
+func Read(p []byte) (n int, err error) {
+	l := len(p)
+
+	if l >= 4 {
+		i := 0
+		uint32p := *(*[]uint32)(unsafe.Pointer(&p))
+		for ; l >= 4; l -= 4 {
+			uint32p[i] = Uint32()
+			i++
+		}
+	}
+
+	if l > 0 {
+		r := Uint32()
+		for ; l > 0; l-- {
+			p[len(p)-l] = byte(r >> (l * 8))
+		}
+	}
+
+	return len(p), nil
 }
