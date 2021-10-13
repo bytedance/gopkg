@@ -14,7 +14,7 @@ jobs:
           ACTIONS_FEISHU_TAG: v1.3.1
           INPUT_WEBHOOK: ${{ secrets.FEISHU_ROBOT_WEBHOOK_URL }}
           INPUT_MESSAGE_TYPE: post
-          INPUT_TITLE: New Pull Peqeust
+          INPUT_TITLE: New Pull Request
           INPUT_CONTENT: |
             @${{ github.event.pull_request.user.login }} opened pull request #${{ github.event.pull_request.number }}:
 
