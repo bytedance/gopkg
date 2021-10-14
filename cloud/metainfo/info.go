@@ -20,13 +20,17 @@ import (
 
 // The prefix listed below may be used to tag the types of values when there is no context to carry them.
 const (
-	PrefixPersistent        = "RPC_PERSIST_"
-	PrefixTransient         = "RPC_TRANSIT_"
-	PrefixTransientUpstream = "RPC_TRANSIT_UPSTREAM_"
+	PrefixPersistent         = "RPC_PERSIST_"
+	PrefixTransient          = "RPC_TRANSIT_"
+	PrefixTransientUpstream  = "RPC_TRANSIT_UPSTREAM_"
+	PrefixBackward           = "RPC_BACKWARD_"
+	PrefixBackwardDownstream = "RPC_BACKWARD_DOWNSTREAM_"
 
 	lenPTU = len(PrefixTransientUpstream)
 	lenPT  = len(PrefixTransient)
 	lenPP  = len(PrefixPersistent)
+	lenB   = len(PrefixBackward)
+	lenBD  = len(PrefixBackwardDownstream)
 )
 
 // **Using empty string as key or value is not support.**
