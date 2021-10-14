@@ -23,9 +23,11 @@ import (
 const (
 	HTTPPrefixTransient  = "rpc-transit-"
 	HTTPPrefixPersistent = "rpc-persist-"
+	HTTPPrefixBackward   = "rpc-backward-"
 
 	lenHPT = len(HTTPPrefixTransient)
 	lenHPP = len(HTTPPrefixPersistent)
+	lenHPB = len(HTTPPrefixBackward)
 )
 
 // HTTPHeaderToCGIVariable performs an CGI variable conversion.
