@@ -1,6 +1,9 @@
 name: Pull Request Check
 
-on: pull_request
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
 
 jobs:
   build:
