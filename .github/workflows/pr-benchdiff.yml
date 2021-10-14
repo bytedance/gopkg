@@ -60,6 +60,7 @@ jobs:
           git checkout PR_HEAD
           echo "::set-output name=head::$(git rev-parse HEAD)"
 
+          set -x
           # Set modified packages to step output
           # git diff: get difference between HEAD and baseline
           # grep: filter non-go files
