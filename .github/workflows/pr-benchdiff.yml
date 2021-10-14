@@ -55,9 +55,14 @@ jobs:
       - name: Checkout pull request HEAD
         id: head
         run: |
+          # Fetch github default branch as baseline
+          git fetch origin ${{ github.event.repository.default_branch }}:BENCHDIFF_BASE
+          git checkout BENCHDIFF_BASE
+          echo "::set-output name=base::$(git rev-parse HEAD)"
+
           # Checkout HEAD of pull request and set its sha to step output
-          git fetch origin pull/${{ needs.trigger.outputs.pr_number }}/head:PR_HEAD
-          git checkout PR_HEAD
+          git fetch origin pull/${{ needs.trigger.outputs.pr_number }}/head:BENCHDIFF_HEAD
+          git checkout BENCHDIFF_HEAD
           echo "::set-output name=head::$(git rev-parse HEAD)"
 
           set -x
@@ -68,7 +73,7 @@ jobs:
           # xargs dirname: keep only the directory name (go packages)
           # xargs ls: filter non-exist files
           # sort | uniq: dedup
-          pkgs=$(git diff --name-only ${{ github.sha }} | grep '.go$' | xargs -r dirname | xargs -r ls -d 2>/dev/null | sort | uniq)
+          pkgs=$(git diff --name-only BENCHDIFF_BASE | grep '.go$' | xargs -r dirname | xargs -r ls -d 2>/dev/null | sort | uniq)
           if [ ! -z "${pkgs}" ]; then
             # awk: Add "./" prefix to let `go test` known they are relative paths
             # tr: join paths to one line, otherwise benchdiff cannot recognize it
@@ -95,7 +100,7 @@ jobs:
             --benchtime=100000x
             --benchmem
             --tolerance=50
-            --base-ref=${{ github.sha }}
+            --base-ref=${{ steps.head.outputs.base }}
             --debug
       - name: Report benchdiff result via comment
         uses: peter-evans/create-or-update-comment@v1
