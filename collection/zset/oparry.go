@@ -20,7 +20,7 @@ import (
 
 const (
 	op1 = 4
-	op2 = maxLevel - op1
+	op2 = maxLevel - op1 // TODO: not sure that whether 4 is the best number for op1([28]Pointer for op2).
 )
 
 type listLevel struct {
