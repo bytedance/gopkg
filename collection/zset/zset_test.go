@@ -315,32 +315,32 @@ func TestFloat64SetRangeByScoreWithOpt(t *testing.T) {
 	z.Add(1.1, "2")
 	z.Add(2.0, "3")
 
-	ns := z.RangeByScoreWithOpt(1.0, 2.0, Float64RangeOpt{ExcludeMin: true})
+	ns := z.RangeByScoreWithOpt(1.0, 2.0, RangeOpt{ExcludeMin: true})
 	assert.Equal(t, 2, len(ns))
 	assert.Equal(t, 1.1, ns[0].Score)
 	assert.Equal(t, 2.0, ns[1].Score)
 
-	ns = z.RangeByScoreWithOpt(1.0, 2.0, Float64RangeOpt{ExcludeMin: true, ExcludeMax: true})
+	ns = z.RangeByScoreWithOpt(1.0, 2.0, RangeOpt{ExcludeMin: true, ExcludeMax: true})
 	assert.Equal(t, 1, len(ns))
 	assert.Equal(t, 1.1, ns[0].Score)
 
-	ns = z.RangeByScoreWithOpt(1.0, 2.0, Float64RangeOpt{ExcludeMax: true})
+	ns = z.RangeByScoreWithOpt(1.0, 2.0, RangeOpt{ExcludeMax: true})
 	assert.Equal(t, 2, len(ns))
 	assert.Equal(t, 1.0, ns[0].Score)
 	assert.Equal(t, 1.1, ns[1].Score)
 
-	ns = z.RangeByScoreWithOpt(2.0, 1.0, Float64RangeOpt{})
+	ns = z.RangeByScoreWithOpt(2.0, 1.0, RangeOpt{})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RangeByScoreWithOpt(2.0, 1.0, Float64RangeOpt{ExcludeMin: true})
+	ns = z.RangeByScoreWithOpt(2.0, 1.0, RangeOpt{ExcludeMin: true})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RangeByScoreWithOpt(2.0, 1.0, Float64RangeOpt{ExcludeMax: true})
+	ns = z.RangeByScoreWithOpt(2.0, 1.0, RangeOpt{ExcludeMax: true})
 	assert.Equal(t, 0, len(ns))
 
-	ns = z.RangeByScoreWithOpt(1.0, 1.0, Float64RangeOpt{ExcludeMax: true})
+	ns = z.RangeByScoreWithOpt(1.0, 1.0, RangeOpt{ExcludeMax: true})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RangeByScoreWithOpt(1.0, 1.0, Float64RangeOpt{ExcludeMin: true})
+	ns = z.RangeByScoreWithOpt(1.0, 1.0, RangeOpt{ExcludeMin: true})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RangeByScoreWithOpt(1.0, 1.0, Float64RangeOpt{})
+	ns = z.RangeByScoreWithOpt(1.0, 1.0, RangeOpt{})
 	assert.Equal(t, 1, len(ns))
 }
 
@@ -350,32 +350,32 @@ func TestFloat64SetRevRangeByScoreWithOpt(t *testing.T) {
 	z.Add(1.1, "2")
 	z.Add(2.0, "3")
 
-	ns := z.RevRangeByScoreWithOpt(2.0, 1.0, Float64RangeOpt{ExcludeMax: true})
+	ns := z.RevRangeByScoreWithOpt(2.0, 1.0, RangeOpt{ExcludeMax: true})
 	assert.Equal(t, 2, len(ns))
 	assert.Equal(t, 1.1, ns[0].Score)
 	assert.Equal(t, 1.0, ns[1].Score)
 
-	ns = z.RevRangeByScoreWithOpt(2.0, 1.0, Float64RangeOpt{ExcludeMax: true, ExcludeMin: true})
+	ns = z.RevRangeByScoreWithOpt(2.0, 1.0, RangeOpt{ExcludeMax: true, ExcludeMin: true})
 	assert.Equal(t, 1, len(ns))
 	assert.Equal(t, 1.1, ns[0].Score)
 
-	ns = z.RevRangeByScoreWithOpt(2.0, 1.0, Float64RangeOpt{ExcludeMin: true})
+	ns = z.RevRangeByScoreWithOpt(2.0, 1.0, RangeOpt{ExcludeMin: true})
 	assert.Equal(t, 2, len(ns))
 	assert.Equal(t, 2.0, ns[0].Score)
 	assert.Equal(t, 1.1, ns[1].Score)
 
-	ns = z.RevRangeByScoreWithOpt(1.0, 2.0, Float64RangeOpt{})
+	ns = z.RevRangeByScoreWithOpt(1.0, 2.0, RangeOpt{})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RevRangeByScoreWithOpt(1.0, 2.0, Float64RangeOpt{ExcludeMin: true})
+	ns = z.RevRangeByScoreWithOpt(1.0, 2.0, RangeOpt{ExcludeMin: true})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RevRangeByScoreWithOpt(1.0, 2.0, Float64RangeOpt{ExcludeMax: true})
+	ns = z.RevRangeByScoreWithOpt(1.0, 2.0, RangeOpt{ExcludeMax: true})
 	assert.Equal(t, 0, len(ns))
 
-	ns = z.RevRangeByScoreWithOpt(1.0, 1.0, Float64RangeOpt{ExcludeMax: true})
+	ns = z.RevRangeByScoreWithOpt(1.0, 1.0, RangeOpt{ExcludeMax: true})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RevRangeByScoreWithOpt(1.0, 1.0, Float64RangeOpt{ExcludeMin: true})
+	ns = z.RevRangeByScoreWithOpt(1.0, 1.0, RangeOpt{ExcludeMin: true})
 	assert.Equal(t, 0, len(ns))
-	ns = z.RevRangeByScoreWithOpt(1.0, 1.0, Float64RangeOpt{})
+	ns = z.RevRangeByScoreWithOpt(1.0, 1.0, RangeOpt{})
 	assert.Equal(t, 1, len(ns))
 }
 
@@ -420,13 +420,13 @@ func testFloat64SetRangeByScore(t *testing.T, rev bool) {
 }
 
 func TestFloat64SetCountWithOpt(t *testing.T) {
-	testFloat64SetCountWithOpt(t, Float64RangeOpt{})
-	testFloat64SetCountWithOpt(t, Float64RangeOpt{true, true})
-	testFloat64SetCountWithOpt(t, Float64RangeOpt{true, false})
-	testFloat64SetCountWithOpt(t, Float64RangeOpt{false, true})
+	testFloat64SetCountWithOpt(t, RangeOpt{})
+	testFloat64SetCountWithOpt(t, RangeOpt{true, true})
+	testFloat64SetCountWithOpt(t, RangeOpt{true, false})
+	testFloat64SetCountWithOpt(t, RangeOpt{false, true})
 }
 
-func testFloat64SetCountWithOpt(t *testing.T, opt Float64RangeOpt) {
+func testFloat64SetCountWithOpt(t *testing.T, opt RangeOpt) {
 	const N = 1000
 	z := NewFloat64()
 	for i := 0; i < N; i++ {
@@ -494,13 +494,13 @@ func TestFloat64SetRemoveRangeByRank(t *testing.T) {
 }
 
 func TestFloat64SetRemoveRangeByScoreWithOpt(t *testing.T) {
-	testFloat64SetRemoveRangeByScoreWithOpt(t, Float64RangeOpt{})
-	testFloat64SetRemoveRangeByScoreWithOpt(t, Float64RangeOpt{true, true})
-	testFloat64SetRemoveRangeByScoreWithOpt(t, Float64RangeOpt{true, false})
-	testFloat64SetRemoveRangeByScoreWithOpt(t, Float64RangeOpt{false, false})
+	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{})
+	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{true, true})
+	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{true, false})
+	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{false, false})
 }
 
-func testFloat64SetRemoveRangeByScoreWithOpt(t *testing.T, opt Float64RangeOpt) {
+func testFloat64SetRemoveRangeByScoreWithOpt(t *testing.T, opt RangeOpt) {
 	const N = 1000
 	z := NewFloat64()
 	for i := 0; i < N; i++ {

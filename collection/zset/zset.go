@@ -30,12 +30,6 @@ import (
 	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
-// Float64RangeOpt describes the whether the min/max is exclusive in score range.
-type Float64RangeOpt struct {
-	ExcludeMin bool
-	ExcludeMax bool
-}
-
 // Float64Node represents an element of Float64Set.
 type Float64Node struct {
 	Value string
@@ -231,10 +225,10 @@ func (z *Float64Set) RevRank(value string) int {
 //
 // Count is the replacement of ZCOUNT command of redis.
 func (z *Float64Set) Count(min, max float64) int {
-	return z.CountWithOpt(min, max, Float64RangeOpt{})
+	return z.CountWithOpt(min, max, RangeOpt{})
 }
 
-func (z *Float64Set) CountWithOpt(min, max float64, opt Float64RangeOpt) int {
+func (z *Float64Set) CountWithOpt(min, max float64, opt RangeOpt) int {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
@@ -295,10 +289,10 @@ func (z *Float64Set) Range(start, stop int) []Float64Node {
 //
 // RangeByScore is the replacement of ZRANGEBYSCORE command of redis.
 func (z *Float64Set) RangeByScore(min, max float64) []Float64Node {
-	return z.RangeByScoreWithOpt(min, max, Float64RangeOpt{})
+	return z.RangeByScoreWithOpt(min, max, RangeOpt{})
 }
 
-func (z *Float64Set) RangeByScoreWithOpt(min, max float64, opt Float64RangeOpt) []Float64Node {
+func (z *Float64Set) RangeByScoreWithOpt(min, max float64, opt RangeOpt) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
@@ -356,10 +350,10 @@ func (z *Float64Set) RevRange(start, stop int) []Float64Node {
 //
 // RevRangeByScore is the replacement of ZREVRANGEBYSCORE command of redis.
 func (z *Float64Set) RevRangeByScore(max, min float64) []Float64Node {
-	return z.RevRangeByScoreWithOpt(max, min, Float64RangeOpt{})
+	return z.RevRangeByScoreWithOpt(max, min, RangeOpt{})
 }
 
-func (z *Float64Set) RevRangeByScoreWithOpt(max, min float64, opt Float64RangeOpt) []Float64Node {
+func (z *Float64Set) RevRangeByScoreWithOpt(max, min float64, opt RangeOpt) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
@@ -402,10 +396,10 @@ func (z *Float64Set) RemoveRangeByRank(start, stop int) []Float64Node {
 //
 // RemoveRangeByScore is the replacement of ZREMRANGEBYSCORE command of redis.
 func (z *Float64Set) RemoveRangeByScore(min, max float64) []Float64Node {
-	return z.RevRangeByScoreWithOpt(min, max, Float64RangeOpt{})
+	return z.RevRangeByScoreWithOpt(min, max, RangeOpt{})
 }
 
-func (z *Float64Set) RemoveRangeByScoreWithOpt(min, max float64, opt Float64RangeOpt) []Float64Node {
+func (z *Float64Set) RemoveRangeByScoreWithOpt(min, max float64, opt RangeOpt) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
@@ -728,11 +722,11 @@ func lessThanMax(value float64, max float64, ex bool) bool {
 
 // DeleteRangeByScore deletes all the elements with score between min and max
 // from the skiplist.
-// Both min and max can be inclusive or exclusive (see Float64RangeOpt).
+// Both min and max can be inclusive or exclusive (see RangeOpt).
 // When inclusive a score >= min && score <= max is deleted.
 //
 // This function returns count of deleted elements.
-func (l *float64List) DeleteRangeByScore(min, max float64, opt Float64RangeOpt, dict map[string]float64) []Float64Node {
+func (l *float64List) DeleteRangeByScore(min, max float64, opt RangeOpt, dict map[string]float64) []Float64Node {
 	var (
 		update  [maxLevel]*float64ListNode
 		removed []Float64Node
@@ -825,7 +819,7 @@ func (l *float64List) GetNodeByRank(rank int) *float64ListNode {
 }
 
 // FirstInRange finds the first node that is contained in the specified range.
-func (l *float64List) FirstInRange(min, max float64, opt Float64RangeOpt) *float64ListNode {
+func (l *float64List) FirstInRange(min, max float64, opt RangeOpt) *float64ListNode {
 	if !l.IsInRange(min, max, opt) {
 		return nil
 	}
@@ -848,7 +842,7 @@ func (l *float64List) FirstInRange(min, max float64, opt Float64RangeOpt) *float
 }
 
 // LastInRange finds the last node that is contained in the specified range.
-func (l *float64List) LastInRange(min, max float64, opt Float64RangeOpt) *float64ListNode {
+func (l *float64List) LastInRange(min, max float64, opt RangeOpt) *float64ListNode {
 	if !l.IsInRange(min, max, opt) {
 		return nil
 	}
@@ -870,7 +864,7 @@ func (l *float64List) LastInRange(min, max float64, opt Float64RangeOpt) *float6
 }
 
 // IsInRange returns whether there is a port of sorted set in given range.
-func (l *float64List) IsInRange(min, max float64, opt Float64RangeOpt) bool {
+func (l *float64List) IsInRange(min, max float64, opt RangeOpt) bool {
 	// Test empty range
 	if min > max || (min == max && (opt.ExcludeMin || opt.ExcludeMax)) {
 		return false
