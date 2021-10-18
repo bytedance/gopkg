@@ -571,7 +571,7 @@ func (l *float64List) Insert(score float64, value string) *float64ListNode {
 	return x
 }
 
-// randomLevel returns a level between (1, maxLevel] for insertion.
+// randomLevel returns a level between [1, maxLevel] for insertion.
 func (l *float64List) randomLevel() int {
 	level := 1
 	for fastrand.Uint32n(1/p) == 0 {
