@@ -20,9 +20,7 @@ import (
 )
 
 func TestAll(t *testing.T) {
-	if Uint32()+Uint32() == 0 {
-		t.Fatal()
-	}
+	_ = Uint32()
 
 	p := make([]byte, 1000)
 	n, err := Read(p)
