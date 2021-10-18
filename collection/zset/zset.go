@@ -109,7 +109,7 @@ func (z *Float64Set) Add(score float64, value string) bool {
 
 	oldScore, ok := z.dict[value]
 	if ok {
-		// Update score if need
+		// Update score if need.
 		if score != oldScore {
 			_ = z.list.UpdateScore(oldScore, value, score)
 			z.dict[value] = score
@@ -117,7 +117,7 @@ func (z *Float64Set) Add(score float64, value string) bool {
 		return false
 	}
 
-	// Insert a new element
+	// Insert a new element.
 	z.list.Insert(score, value)
 	z.dict[value] = score
 	return true
@@ -152,12 +152,12 @@ func (z *Float64Set) IncrBy(incr float64, value string) (float64, bool) {
 
 	oldScore, ok := z.dict[value]
 	if !ok {
-		// Insert a new element
+		// Insert a new element.
 		z.list.Insert(incr, value)
 		z.dict[value] = incr
 		return incr, false
 	} else {
-		// Update score
+		// Update score.
 		newScore := oldScore + incr
 		_ = z.list.UpdateScore(oldScore, value, newScore)
 		z.dict[value] = newScore
@@ -236,13 +236,13 @@ func (z *Float64Set) CountWithOpt(min, max float64, opt RangeOpt) int {
 	if first == nil {
 		return 0
 	}
-	// sub 1 for 1-based rank
+	// Sub 1 for 1-based rank.
 	firstRank := z.list.Rank(first.score, first.value) - 1
 	last := z.list.LastInRange(min, max, opt)
 	if last == nil {
 		return z.list.length - firstRank
 	}
-	// sub 1 for 1-based rank
+	// Sub 1 for 1-based rank.
 	lastRank := z.list.Rank(last.score, last.value) - 1
 	return lastRank - firstRank + 1
 }
@@ -262,7 +262,7 @@ func (z *Float64Set) Range(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
-	// Convert negative rank to positive
+	// Convert negative rank to positive.
 	if start < 0 {
 		start = z.list.length + start
 	}
@@ -323,7 +323,7 @@ func (z *Float64Set) RevRange(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
-	// Convert negative rank to positive
+	// Convert negative rank to positive.
 	if start < 0 {
 		start = z.list.length + start
 	}
@@ -380,7 +380,7 @@ func (z *Float64Set) RemoveRangeByRank(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
-	// Convert negative rank to positive
+	// Convert negative rank to positive.
 	if start < 0 {
 		start = z.list.length + start
 	}
@@ -492,7 +492,7 @@ func (n *float64ListNode) equal(score float64, value string) bool {
 // b) the comparison is not just by key (our 'score') but by satellite data(?).
 // c) there is a back pointer, so it's a doubly linked list with the back
 // pointers being only at "level 1". This allows to traverse the list
-// from tail to head, useful for RevRange. */
+// from tail to head, useful for RevRange.
 type float64List struct {
 	header       *float64ListNode
 	tail         *float64ListNode
@@ -534,7 +534,7 @@ func (l *float64List) Insert(score float64, value string) *float64ListNode {
 	// already inside or not.
 	level := l.randomLevel()
 	if level > l.highestLevel {
-		// create higher levels
+		// Create higher levels.
 		for i := l.highestLevel; i < level; i++ {
 			rank[i] = 0
 			update[i] = l.header
@@ -551,12 +551,12 @@ func (l *float64List) Insert(score float64, value string) *float64ListNode {
 		x.storeSpan(i, update[i].loadSpan(i)-(rank[0]-rank[i]))
 		update[i].storeSpan(i, (rank[0]-rank[i])+1)
 	}
-	// Increment span for untouched levels
+	// Increment span for untouched levels.
 	for i := level; i < l.highestLevel; i++ {
 		update[i].storeSpan(i, update[i].loadSpan(i)+1)
 	}
 
-	// update back pointer
+	// Update back pointer.
 	if update[0] != l.header {
 		x.prev = update[0]
 	}
@@ -613,12 +613,12 @@ func (l *float64List) Rank(score float64, value string) int {
 func (l *float64List) deleteNode(x *float64ListNode, update *[maxLevel]*float64ListNode) {
 	for i := 0; i < l.highestLevel; i++ {
 		if update[i].loadNext(i) == x {
-			// Remove x, updaet[i].span = updaet[i].span + x.span - 1 (x removed)
+			// Remove x, updaet[i].span = updaet[i].span + x.span - 1 (x removed).
 			next, span := x.loadNextAndSpan(i)
 			span += update[i].loadSpan(i) - 1
 			update[i].storeNextAndSpan(i, next, span)
 		} else {
-			// x does not appear on this level, just update span
+			// x does not appear on this level, just update span.
 			update[i].storeSpan(i, update[i].loadSpan(i)-1)
 		}
 	}
@@ -628,7 +628,7 @@ func (l *float64List) deleteNode(x *float64ListNode, update *[maxLevel]*float64L
 		l.tail = x.prev
 	}
 	for l.highestLevel > 1 && l.header.loadNext(l.highestLevel-1) != nil {
-		// Clear the pointer and span for safety
+		// Clear the pointer and span for safety.
 		l.header.storeNextAndSpan(l.highestLevel-1, nil, 0)
 		l.highestLevel--
 	}
@@ -654,12 +654,11 @@ func (l *float64List) Delete(score float64, value string) *float64ListNode {
 		l.deleteNode(x, &update)
 		return x
 	}
-	// not found
-	return nil
+	return nil // not found
 }
 
 // UpdateScore updates the score of an element inside the sorted set skiplist.
-
+//
 // NOTE: the element must exist and must match 'score'.
 // This function does not update the score in the hash table side, the
 // caller should take care of it.
@@ -742,10 +741,10 @@ func (l *float64List) DeleteRangeByScore(min, max float64, opt RangeOpt, dict ma
 		update[i] = x
 	}
 
-	// Current node is the last with score not greater than min. */
+	// Current node is the last with score not greater than min.
 	x = x.loadNext(0)
 
-	// Delete nodes in range
+	// Delete nodes in range.
 	for x != nil && lessThanMax(x.score, max, opt.ExcludeMax) {
 		next := x.loadNext(0)
 		l.deleteNode(x, &update)
@@ -784,7 +783,7 @@ func (l *float64List) DeleteRangeByRank(start, end int, dict map[string]float64)
 
 	traversed++
 	x = x.loadNext(0)
-	// Delete nodes in range
+	// Delete nodes in range.
 	for x != nil && traversed <= end {
 		next := x.loadNext(0)
 		l.deleteNode(x, &update)
@@ -833,7 +832,7 @@ func (l *float64List) FirstInRange(min, max float64, opt RangeOpt) *float64ListN
 		}
 	}
 
-	// The next node MUST not be NULL (excluded by IsInRange)
+	// The next node MUST not be NULL (excluded by IsInRange).
 	x = x.loadNext(0)
 	if !lessThanMax(x.score, max, opt.ExcludeMax) {
 		return nil
@@ -856,7 +855,7 @@ func (l *float64List) LastInRange(min, max float64, opt RangeOpt) *float64ListNo
 		}
 	}
 
-	// The node x must not be NULL (excluded by IsInRange)
+	// The node x must not be NULL (excluded by IsInRange).
 	if !greaterThanMin(x.score, min, opt.ExcludeMin) {
 		return nil
 	}
@@ -865,7 +864,7 @@ func (l *float64List) LastInRange(min, max float64, opt RangeOpt) *float64ListNo
 
 // IsInRange returns whether there is a port of sorted set in given range.
 func (l *float64List) IsInRange(min, max float64, opt RangeOpt) bool {
-	// Test empty range
+	// Test empty range.
 	if min > max || (min == max && (opt.ExcludeMin || opt.ExcludeMax)) {
 		return false
 	}
