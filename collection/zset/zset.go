@@ -268,7 +268,7 @@ func (z *Float64Set) Range(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
-	// Convert negative rank
+	// Convert negative rank to positive
 	if start < 0 {
 		start = z.list.length + start
 	}
@@ -329,7 +329,7 @@ func (z *Float64Set) RevRange(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
-	// Convert negative rank
+	// Convert negative rank to positive
 	if start < 0 {
 		start = z.list.length + start
 	}
@@ -386,7 +386,7 @@ func (z *Float64Set) RemoveRangeByRank(start, stop int) []Float64Node {
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 
-	// Convert negative rank
+	// Convert negative rank to positive
 	if start < 0 {
 		start = z.list.length + start
 	}
@@ -413,12 +413,12 @@ func (z *Float64Set) RemoveRangeByScoreWithOpt(min, max float64, opt Float64Rang
 }
 
 //
-// skip list implementation
+// Skip list implementation.
 //
 
 const (
-	maxLevel = 32   // Same to ZSKIPLIST_MAXLEVEL
-	p        = 0.25 // Same to ZSKIPLIST_P
+	maxLevel = 32   // same to ZSKIPLIST_MAXLEVEL
+	p        = 0.25 // same to ZSKIPLIST_P
 )
 
 // float64ListNode is node of float64List.
@@ -517,8 +517,10 @@ func newFloat64List() *float64List {
 // Insert inserts a new node in the skiplist. Assumes the element does not already
 // exist (up to the caller to enforce that).
 func (l *float64List) Insert(score float64, value string) *float64ListNode {
-	var update [maxLevel]*float64ListNode
-	var rank [maxLevel + 1]int // +1 for eliminating a boundary judgment
+	var (
+		update [maxLevel]*float64ListNode
+		rank   [maxLevel + 1]int // +1 for eliminating a boundary judgment
+	)
 
 	x := l.header
 	for i := l.highestLevel - 1; i >= 0; i-- {
@@ -731,8 +733,10 @@ func lessThanMax(value float64, max float64, ex bool) bool {
 //
 // This function returns count of deleted elements.
 func (l *float64List) DeleteRangeByScore(min, max float64, opt Float64RangeOpt, dict map[string]float64) []Float64Node {
-	var update [maxLevel]*float64ListNode
-	var removed []Float64Node
+	var (
+		update  [maxLevel]*float64ListNode
+		removed []Float64Node
+	)
 
 	x := l.header
 	for i := l.highestLevel - 1; i >= 0; i-- {
@@ -767,9 +771,11 @@ func (l *float64List) DeleteRangeByScore(min, max float64, opt Float64RangeOpt, 
 //
 // NOTE: start and end need to be 1-based
 func (l *float64List) DeleteRangeByRank(start, end int, dict map[string]float64) []Float64Node {
-	var update [maxLevel]*float64ListNode
-	var removed []Float64Node
-	var traversed int
+	var (
+		update    [maxLevel]*float64ListNode
+		removed   []Float64Node
+		traversed int
+	)
 
 	x := l.header
 	for i := l.highestLevel - 1; i >= 0; i-- {
