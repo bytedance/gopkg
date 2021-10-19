@@ -130,6 +130,10 @@ func Uint64n(n uint64) uint64 {
 func Read(p []byte) (int, error) {
 	l := len(p)
 
+	if l == 0 {
+		return 0, nil
+	}
+
 	// Used for local XORSHIFT.
 	var tmp [2]uint32
 	tmp[0], tmp[1] = Uint32(), Uint32()
@@ -140,6 +144,7 @@ func Read(p []byte) (int, error) {
 		s1, s0 := tmp[0], tmp[1]
 		for l >= 4 {
 			// Local XORSHIFT.
+			// Xorshift paper: https://www.jstatsoft.org/article/view/v008i14/xorshift.pdf
 			s1 ^= s1 << 17
 			s1 = s1 ^ s0 ^ s1>>7 ^ s0>>16
 			s0, s1 = s1, s0
