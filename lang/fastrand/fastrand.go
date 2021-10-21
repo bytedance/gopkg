@@ -154,7 +154,6 @@ func Read(p []byte) (int, error) {
 
 	if l > 0 {
 		// Local XORSHIFT.
-		// We don't need to save s0 and s1(tmp is not used).
 		s1 ^= s1 << 17
 		s1 = s1 ^ s0 ^ s1>>7 ^ s0>>16
 
