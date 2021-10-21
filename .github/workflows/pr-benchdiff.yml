@@ -97,7 +97,7 @@ jobs:
             --packages="${{ steps.head.outputs.pkgs }}"
             --count=10
             --warmup-count=1
-            --benchtime=100000x
+            --benchtime=1s
             --benchmem
             --tolerance=50
             --base-ref=${{ steps.head.outputs.base }}
