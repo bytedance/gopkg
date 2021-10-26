@@ -86,6 +86,18 @@ func SaveMetaInfoToMap(ctx context.Context, m map[string]string) {
 	}
 }
 
+// Copy copies all metainfo key-value pairs from src to dst and return a new context.
+// Any original metainfo exists in dst will be discarded.
+func Copy(dst, src context.Context) context.Context {
+	if src != nil && dst != nil {
+		if x := getNode(src); x != nil {
+			n := *x
+			return withNode(dst, &n)
+		}
+	}
+	return dst
+}
+
 // sliceToMap converts a kv slice to map. If the slice is empty, an empty map will be returned instead of nil.
 func sliceToMap(slice []kv) (m map[string]string) {
 	if size := len(slice); size == 0 {

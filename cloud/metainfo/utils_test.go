@@ -146,3 +146,32 @@ func TestSaveMetaInfoToMap(t *testing.T) {
 	assert(t, m[metainfo.PrefixTransient+"b"] == "b2")
 	assert(t, m[metainfo.PrefixPersistent+"b"] == "b3")
 }
+
+func TestCopy(t *testing.T) {
+	var c0, cx context.Context
+	c1 := context.Background()
+
+	c2 := context.Background()
+	c2 = metainfo.WithValue(c2, "a", "a")
+	c2 = metainfo.WithPersistentValue(c2, "b", "b")
+
+	c3 := context.Background()
+	c3 = metainfo.WithValue(c3, "c", "c")
+	c3 = metainfo.WithPersistentValue(c3, "d", "d")
+
+	cx = metainfo.Copy(c0, c1)
+	assert(t, cx == c0)
+
+	cx = metainfo.Copy(c1, c0)
+	assert(t, cx == c1)
+
+	cx = metainfo.Copy(c1, c2)
+	tv, pv := metainfo.GetAllValues(cx), metainfo.GetAllPersistentValues(cx)
+	assert(t, len(tv) == 1 && tv["a"] == "a")
+	assert(t, len(pv) == 1 && pv["b"] == "b")
+
+	cx = metainfo.Copy(c2, c3)
+	tv, pv = metainfo.GetAllValues(cx), metainfo.GetAllPersistentValues(cx)
+	assert(t, len(tv) == 1 && tv["c"] == "c")
+	assert(t, len(pv) == 1 && pv["d"] == "d")
+}
