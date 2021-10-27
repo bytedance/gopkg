@@ -12,6 +12,7 @@
 /collection/hashset @lyeeeeee @PureWhiteWu
 /collection/skipmap @zhangyunhao116 @PureWhiteWu
 /collection/skipset @zhangyunhao116 @PureWhiteWu
+/collection/zset @SilverRainZ
 
 # lang code owners
 /lang/fastrand @zhangyunhao116 @PureWhiteWu
