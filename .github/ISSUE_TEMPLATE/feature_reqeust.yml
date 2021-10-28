@@ -1,0 +1,38 @@
+# Reference: https://github.com/jekyll/jekyll/blob/master/.github/ISSUE_TEMPLATE/feature_request.md
+
+name: Feature Request
+description: File a feature request
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request!
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Please give a one-paragraph explanation of the feature.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Why do you want to see this feature? 
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Explanation
+      description: |
+        Please explain the proposal as if it was already included in the project and you
+        were teaching it to another programmer. That generally means:
+
+        - Introducing new named concepts.
+        - Explaining the feature largely in terms of examples.
+        - If applicable, provide sample error messages, deprecation warnings, or
+        migration guidance.
+        
+        *If this is a small feature, you may omit this section.*

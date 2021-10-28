@@ -1,0 +1,71 @@
+name: Bug Report
+description: File a bug report
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: input
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      placeholder: "Example: Debian GNU/Linux 9 (stretch)"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Go Version
+      description: What version of golang are you using?
+      placeholder: "Example: go1.16.5 linux/amd64"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Package Version
+      description: What version of bytedance/gopkg are you using?
+      placeholder: "Example: 20210913/main/develop"
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Affected Packages 
+      description: Which packages are affected by this issue?
+      placeholder: |
+        One package per line, for example:
+
+        - lang/fastrand
+        - collection/skipset
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction Steps
+      description: How do you trigger this bug? Please walk us through it step by step.
+      placeholder: |
+        1.
+        2.
+        3.
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Other Information
+      description: Do you still need to add any information?
