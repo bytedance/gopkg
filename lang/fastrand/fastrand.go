@@ -54,7 +54,7 @@ func Int63n(n int64) int64 {
 	if n <= 0 {
 		panic("invalid argument to Int63n")
 	}
-	if n<=1<<32-1{
+	if n<=1<<31-1{
 		return int64(Int31n(int32(n)))
 	}
 	if n&(n-1) == 0 { // n is power of two, can mask
@@ -76,9 +76,6 @@ func Int31n(n int32) int32 {
 	// EQ
 	if n <= 0 {
 		panic("invalid argument to Int31n")
-	}
-	if n&(n-1) == 0 {       // n is power of two, can mask
-		return Int31() & (n - 1)
 	}
 	v := Uint32()
 	prod := uint64(v) * uint64(n)
@@ -125,9 +122,6 @@ func Uint32n(n uint32) uint32 {
 	if n <= 0 {
 		panic("invalid argument to Uint32n")
 	}
-	if n&(n-1) == 0 {                // n is power of two, can mask
-		return Uint32() & (n - 1)
-	}
 	return uint32(uint64(Uint32()) * uint64(n) >> 32)
 }
 
@@ -135,9 +129,6 @@ func Uint32n(n uint32) uint32 {
 func Uint64n(n uint64) uint64 {
 	if n <= 0 {
 		panic("invalid argument to Uint64n")
-	}
-	if n<=1<<32-1 {
-		return uint64(Uint32n(uint32(n)))
 	}
 	return Uint64() % n
 }
