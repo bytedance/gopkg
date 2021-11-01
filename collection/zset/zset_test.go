@@ -526,7 +526,7 @@ func testFloat64SetRemoveRangeByScoreWithOpt(t *testing.T, opt RangeOpt) {
 	assert.Equal(t, N, z.Len()+len(actualNs))
 }
 
-func TestUnionStoreFloat64(t *testing.T) {
+func TestUnionFloat64(t *testing.T) {
 	var zs []*Float64Set
 	for i := 0; i < 10; i++ {
 		z := NewFloat64()
@@ -537,7 +537,7 @@ func TestUnionStoreFloat64(t *testing.T) {
 		}
 		zs = append(zs, z)
 	}
-	z := UnionStoreFloat64(zs...)
+	z := UnionFloat64(zs...)
 	for _, n := range z.Range(0, z.Len()-1) {
 		var expectScore float64
 		for i := 0; i < 10; i++ {
@@ -548,12 +548,12 @@ func TestUnionStoreFloat64(t *testing.T) {
 	}
 }
 
-func TestUnionStoreFloat64_Empty(t *testing.T) {
-	z := UnionStoreFloat64()
+func TestUnionFloat64_Empty(t *testing.T) {
+	z := UnionFloat64()
 	assert.Zero(t, z.Len())
 }
 
-func TestInterStoreFloat64(t *testing.T) {
+func TestInterFloat64(t *testing.T) {
 	var zs []*Float64Set
 	for i := 0; i < 10; i++ {
 		z := NewFloat64()
@@ -564,7 +564,7 @@ func TestInterStoreFloat64(t *testing.T) {
 		}
 		zs = append(zs, z)
 	}
-	z := InterStoreFloat64(zs...)
+	z := InterFloat64(zs...)
 	for _, n := range z.Range(0, z.Len()-1) {
 		var expectScore float64
 		for i := 0; i < 10; i++ {
@@ -576,12 +576,12 @@ func TestInterStoreFloat64(t *testing.T) {
 	}
 }
 
-func TestInterStoreFloat64_Empty(t *testing.T) {
-	z := InterStoreFloat64()
+func TestInterFloat64_Empty(t *testing.T) {
+	z := InterFloat64()
 	assert.Zero(t, z.Len())
 }
 
-func TestInterStoreFloat64_Simple(t *testing.T) {
+func TestInterFloat64_Simple(t *testing.T) {
 	z1 := NewFloat64()
 	z1.Add(0, "1")
 	z2 := NewFloat64()
@@ -589,6 +589,6 @@ func TestInterStoreFloat64_Simple(t *testing.T) {
 	z3 := NewFloat64()
 	z3.Add(0, "2")
 
-	z := InterStoreFloat64(z1, z2, z3)
+	z := InterFloat64(z1, z2, z3)
 	assert.Zero(t, z.Len())
 }

@@ -48,11 +48,11 @@ func NewFloat64() *Float64Set {
 	}
 }
 
-// UnionStoreFloat64 returns the union of given sorted sets, the resulting score of
+// UnionFloat64 returns the union of given sorted sets, the resulting score of
 // a value is the sum of its scores in the sorted sets where it exists.
 //
-// UnionStoreFloat64 is the replacement of UNIONSTORE command of redis.
-func UnionStoreFloat64(zs ...*Float64Set) *Float64Set {
+// UnionFloat64 is the replacement of UNIONSTORE command of redis.
+func UnionFloat64(zs ...*Float64Set) *Float64Set {
 	dest := NewFloat64()
 	for _, z := range zs {
 		for _, n := range z.Range(0, -1) {
@@ -62,11 +62,11 @@ func UnionStoreFloat64(zs ...*Float64Set) *Float64Set {
 	return dest
 }
 
-// InterStoreFloat64 returns the intersection of given sorted sets, the resulting
+// InterFloat64 returns the intersection of given sorted sets, the resulting
 // score of a value is the sum of its scores in the sorted sets where it exists.
 //
-// InterStoreFloat64 is the replacement of INTERSTORE command of redis.
-func InterStoreFloat64(zs ...*Float64Set) *Float64Set {
+// InterFloat64 is the replacement of INTERSTORE command of redis.
+func InterFloat64(zs ...*Float64Set) *Float64Set {
 	dest := NewFloat64()
 	if len(zs) == 0 {
 		return dest
