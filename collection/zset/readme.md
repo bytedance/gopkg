@@ -67,10 +67,6 @@ Redis' zset can operates elements in lexicographic order, which is not commonly
 used function, so zset does not support commands like ZREMRANGEBYLEX, ZLEXCOUNT
 and so on.
 
-### Not implemented yet 
-
-We may implement them in future.
-
 ## QuickStart
 
 ```go
