@@ -55,7 +55,7 @@ func NewFloat64() *Float64Set {
 func UnionStoreFloat64(zs ...*Float64Set) *Float64Set {
 	dest := NewFloat64()
 	for _, z := range zs {
-		for _, n := range z.Range(0, z.Len()-1) {
+		for _, n := range z.Range(0, -1) {
 			dest.Add(n.Score, n.Value)
 		}
 	}
@@ -253,6 +253,10 @@ func (z *Float64Set) CountWithOpt(min, max float64, opt RangeOpt) int {
 //
 // This function won't panic even when the given rank out of range.
 //
+// NOTE: Please always use z.Range(0, -1) for iterating the whole sorted set.
+// z.Range(0, z.Len()-1) has 2 method calls, the sorted set may changes during
+// the gap of calls.
+//
 // Range is the replacement of ZRANGE command of redis.
 func (z *Float64Set) Range(start, stop int) []Float64Node {
 	z.mu.RLock()
@@ -313,6 +317,10 @@ func (z *Float64Set) RangeByScoreWithOpt(min, max float64, opt RangeOpt) []Float
 // Elements with the same score are ordered in reverse lexicographical ordering.
 //
 // This function won't panic even when the given rank out of range.
+//
+// NOTE: Please always use z.RevRange(0, -1) for iterating the whole sorted set.
+// z.RevRange(0, z.Len()-1) has 2 method calls, the sorted set may changes during
+// the gap of calls.
 //
 // RevRange is the replacement of ZREVRANGE command of redis.
 func (z *Float64Set) RevRange(start, stop int) []Float64Node {
