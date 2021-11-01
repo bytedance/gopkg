@@ -76,6 +76,7 @@ func InterStoreFloat64(zs ...*Float64Set) *Float64Set {
 		for _, z := range zs[1:] {
 			if !z.Contains(n.Value) {
 				ok = false
+				break
 			}
 		}
 		if ok {
