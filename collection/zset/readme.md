@@ -13,8 +13,9 @@ The sorted set has `O(log(N))` time complexity when doing Add(ZADD) and Remove(Z
 ## Features
 
 - Concurrent safe API
-- Value is sorted with score
+- Values are sorted with score
 - Implementation equivalent to redis 
+- Fast skiplist level randomization
 
 ## Comparison
 
@@ -25,32 +26,32 @@ The sorted set has `O(log(N))` time complexity when doing Add(ZADD) and Remove(Z
 | ZREM                  | Remove              |
 | ZREMRANGEBYSCORE      | RemoveRangeByScore  |
 | ZREMRANGEBYRANK       | RemoveRangeByRank   |
-| ZREMRANGEBYLEX        | NOT SUPPORTED       |
-| ZUNIONSTORE           | UnionStore          |
-| ZINTERSTORE           | InterStore          |
-| ZDIFFSTORE            |                     |
-| ZUNION                |                     |
-| ZINTER                |                     |
-| ZINTERCARD            |                     |
-| ZDIFF                 |                     |
+| ZREMRANGEBYLEX        | *NOT SUPPORTED*     |
+| ZUNIONSTORE           | *NOT SUITABLE*      |
+| ZINTERSTORE           | *NOT SUITABLE*      |
+| ZDIFFSTORE            | *NOT SUITABLE*      |
+| ZUNION                | Union               |
+| ZINTER                | Inter               |
+| ZINTERCARD            | *TODO*              |
+| ZDIFF                 | *TODO*              |
 | ZRANGE                | Range               |
-| ZRANGESTORE           |                     |
+| ZRANGESTORE           | *NOT SUITABLE*      |
 | ZRANGEBYSCORE         | IncrBy              |
 | ZREVRANGEBYSCORE      | RevRangeByScore     |
-| ZRANGEBYLEX           | NOT SUPPORTED       |
-| ZREVRANGEBYLEX        | NOT SUPPORTED       |
+| ZRANGEBYLEX           |*NOT SUPPORTED*      |
+| ZREVRANGEBYLEX        |*NOT SUPPORTED*      |
 | ZCOUNT                | Count               |
-| ZLEXCOUNT             | NOT SUPPORTED       |
+| ZLEXCOUNT             |*NOT SUPPORTED*      |
 | ZREVRANGE             | RevRange            |
 | ZCARD                 | Len                 |
 | ZSCORE                | Score               |
-| ZMSCORE               |                     |
+| ZMSCORE               | *NOT SUITABLE*      |
 | ZRANK                 | Rank                |
 | ZREVRANK              | RevRank             |
-| ZSCAN                 |                     |
-| ZPOPMIN               |                     |
-| ZPOPMAX               |                     |
-| ZRANDMEMBER           |                     |
+| ZSCAN                 | *NOT SUPPORTED*     |
+| ZPOPMIN               | *TODO*              |
+| ZPOPMAX               | *TODO*              |
+| ZRANDMEMBER           | *TODO*              |
 
 List of redis commands are generated from the following command:
 
