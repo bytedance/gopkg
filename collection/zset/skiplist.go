@@ -25,8 +25,8 @@ import (
 //
 
 const (
-	maxLevel = 32   // same to ZSKIPLIST_MAXLEVEL
-	p        = 0.25 // same to ZSKIPLIST_P
+	maxLevel    = 32   // same to ZSKIPLIST_MAXLEVEL, should be enough for 2^64 elements
+	probability = 0.25 // same to ZSKIPLIST_P, 1/4
 )
 
 // float64ListNode is node of float64List.
@@ -188,7 +188,7 @@ func (l *float64List) Insert(score float64, value string) *float64ListNode {
 // randomLevel returns a level between [1, maxLevel] for insertion.
 func (l *float64List) randomLevel() int {
 	level := 1
-	for fastrand.Uint32n(1/p) == 0 {
+	for fastrand.Uint32n(1/probability) == 0 {
 		level++
 	}
 	if level > maxLevel {
