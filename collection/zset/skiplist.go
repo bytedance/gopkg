@@ -44,9 +44,7 @@ func newFloat64ListNode(score float64, value string, level int) *float64ListNode
 		value: value,
 		level: level,
 	}
-	if level > op1 {
-		node.oparr.extra = new([op2]listLevel)
-	}
+	node.oparr.init(level)
 	return node
 }
 

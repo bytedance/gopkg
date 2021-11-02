@@ -32,6 +32,12 @@ type optionalArray struct {
 	extra *([op2]listLevel)
 }
 
+func (a *optionalArray) init(level int) {
+	if level > op1 {
+		a.extra = new([op2]listLevel)
+	}
+}
+
 func (a *optionalArray) loadNext(i int) unsafe.Pointer {
 	if i < op1 {
 		return a.base[i].next
