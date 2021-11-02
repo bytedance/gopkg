@@ -26,29 +26,19 @@ The sorted set has `O(log(N))` time complexity when doing Add(ZADD) and Remove(Z
 | ZREM                  | Remove              |
 | ZREMRANGEBYSCORE      | RemoveRangeByScore  |
 | ZREMRANGEBYRANK       | RemoveRangeByRank   |
-| ZREMRANGEBYLEX        | *NOT SUPPORTED*     |
-| ZUNIONSTORE           | *NOT SUITABLE*      |
-| ZINTERSTORE           | *NOT SUITABLE*      |
-| ZDIFFSTORE            | *NOT SUITABLE*      |
 | ZUNION                | Union               |
 | ZINTER                | Inter               |
 | ZINTERCARD            | *TODO*              |
 | ZDIFF                 | *TODO*              |
 | ZRANGE                | Range               |
-| ZRANGESTORE           | *NOT SUITABLE*      |
 | ZRANGEBYSCORE         | IncrBy              |
 | ZREVRANGEBYSCORE      | RevRangeByScore     |
-| ZRANGEBYLEX           |*NOT SUPPORTED*      |
-| ZREVRANGEBYLEX        |*NOT SUPPORTED*      |
 | ZCOUNT                | Count               |
-| ZLEXCOUNT             |*NOT SUPPORTED*      |
 | ZREVRANGE             | RevRange            |
 | ZCARD                 | Len                 |
 | ZSCORE                | Score               |
-| ZMSCORE               | *NOT SUITABLE*      |
 | ZRANK                 | Rank                |
 | ZREVRANK              | RevRank             |
-| ZSCAN                 | *NOT SUPPORTED*     |
 | ZPOPMIN               | *TODO*              |
 | ZPOPMAX               | *TODO*              |
 | ZRANDMEMBER           | *TODO*              |
@@ -62,11 +52,30 @@ cat redis/src/server.c | grep -o '"z.*",z.*Command' | grep -o '".*"' | cut -d '"
 You may find that not all redis commands have corresponding go implementations,
 the reason is as follows:
 
-### Not going to support LEX commands
+### Unsupported Commands
 
 Redis' zset can operates elements in lexicographic order, which is not commonly
 used function, so zset does not support commands like ZREMRANGEBYLEX, ZLEXCOUNT
 and so on.
+
+| Redis command         |
+|-----------------------|
+| ZREMRANGEBYLEX        |
+| ZRANGEBYLEX           |
+| ZREVRANGEBYLEX        |
+| ZLEXCOUNT             |
+
+In redis, user accesses zset via a string key. We do not need such string key
+because we have variable. so the following commands are not implemented:
+
+| Redis command         |
+|-----------------------|
+| ZUNIONSTORE           |
+| ZINTERSTORE           |
+| ZDIFFSTORE            |
+| ZRANGESTORE           |
+| ZMSCORE               |
+| ZSCAN                 |
 
 ## QuickStart
 
