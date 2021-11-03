@@ -6,9 +6,9 @@
 
 zset provides a concurrent-safety sorted set, can be used as a local replacement of [Redis' zset](https://redis.com/ebook/part-2-core-concepts/chapter-3-commands-in-redis/3-5-sorted-sets/).
 
-The main different to other sets is, every value of set is associated with a score, that is used in order to take the sorted set ordered, from the smallest to the greatest score.
+The main difference to other sets is, every value of set is associated with a score, that is used to take the sorted set ordered, from the smallest to the greatest score.
 
-The sorted set has `O(log(N))` time complexity when doing Add(ZADD) and Remove(ZREM) operations and `O(1)` time complexity when doing Contains operations.
+The zset has `O(log(N))` time complexity when doing Add(ZADD) and Remove(ZREM) operations and `O(1)` time complexity when doing Contains operations.
 
 ## Features
 
