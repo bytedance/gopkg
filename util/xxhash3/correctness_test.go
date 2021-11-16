@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/bytedance/gopkg/util/xxhash3/internal/xxh3_raw"
+	"golang.org/x/sys/cpu"
 )
 
 var dat []byte
@@ -97,8 +98,7 @@ func TestLen1025_1048576_scalar(t *testing.T) {
 }
 
 func TestLen1024_1048576_AVX2(t *testing.T) {
-	avx2, sse2 = true, false
-
+	avx2, sse2 = cpu.X86.HasAVX2, false
 	for i := 1024; i < 1048576; i = i << 1 {
 		input := dat[:i]
 		res1 := xxh3_raw.Hash(input)
@@ -111,8 +111,7 @@ func TestLen1024_1048576_AVX2(t *testing.T) {
 }
 
 func TestLen1024_1048576_SSE2(t *testing.T) {
-	avx2, sse2 = false, true
-
+	avx2, sse2 = false, cpu.X86.HasSSE2
 	for i := 1024; i < 1048576; i = i << 1 {
 		input := dat[:i]
 		res1 := xxh3_raw.Hash(input)
@@ -189,7 +188,7 @@ func TestLen128_1025_1048576_scalar(t *testing.T) {
 }
 
 func TestLen128_1024_1048576_AVX2(t *testing.T) {
-	avx2, sse2 = true, false
+	avx2, sse2 = cpu.X86.HasAVX2, false
 
 	for i := 1024; i < 1048576; i = i << 1 {
 		input := dat[:i]
@@ -203,7 +202,7 @@ func TestLen128_1024_1048576_AVX2(t *testing.T) {
 }
 
 func TestLen128_1024_1048576_SSE2(t *testing.T) {
-	avx2, sse2 = false, true
+	avx2, sse2 = false, cpu.X86.HasSSE2
 
 	for i := 1024; i < 1048576; i = i << 1 {
 		input := dat[:i]
