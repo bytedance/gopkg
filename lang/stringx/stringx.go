@@ -36,7 +36,7 @@ func PadLeftChar(s string, size int, ch rune) string {
 	return padCharLeftOrRight(s, size, ch, true)
 }
 
-// PadLeftChar left pad a string with space character(' ') in a larger string(specified size).
+// PadLeftSpace left pad a string with space character(' ') in a larger string(specified size).
 // if the size is less than the param string, the param string is returned.
 // note: size is unicode size.
 func PadLeftSpace(s string, size int) string {
@@ -50,7 +50,7 @@ func PadRightChar(s string, size int, ch rune) string {
 	return padCharLeftOrRight(s, size, ch, false)
 }
 
-// PadLeftChar right pad a string with space character(' ') in a large string(specified size).
+// PadRightSpace right pad a string with space character(' ') in a large string(specified size).
 // if the size is less than the param string, the param string is returned.
 // note: size is unicode size.
 func PadRightSpace(s string, size int) string {
@@ -83,7 +83,7 @@ func PadCenterChar(s string, size int, ch rune) string {
 	return s
 }
 
-// PadCenterChar center pad a string with space character(' ') in a larger string(specified size).
+// PadCenterSpace center pad a string with space character(' ') in a larger string(specified size).
 // if the size is less than the param string, the param string is returned.
 // note: size is unicode size.
 func PadCenterSpace(s string, size int) string {
@@ -261,7 +261,7 @@ func Reverse(s string) (string, error) {
 	return hack.BytesToString(dst), nil
 }
 
-// Shuffle  shuffles runes in a string and returns.
+// Shuffle shuffles runes in a string and returns.
 func Shuffle(s string) string {
 	if s == "" {
 		return s
