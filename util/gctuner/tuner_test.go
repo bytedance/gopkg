@@ -29,12 +29,12 @@ func TestTuner(t *testing.T) {
 	threshold := memLimit / 2
 	tn := newTuner(threshold)
 	is.Equal(tn.threshold, threshold)
-	is.Equal(defaultGCPercent, tn.gcPercent)
+	is.Equal(defaultGCPercent, tn.getGCPercent())
 
 	// no heap
 	for i := 0; i < 100; i++ {
 		runtime.GC()
-		is.Equal(MaxGCPercent, tn.gcPercent)
+		is.Equal(MaxGCPercent, tn.getGCPercent())
 	}
 
 	// 1/4 threshold
@@ -42,8 +42,8 @@ func TestTuner(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		runtime.GC()
 		// ~= 300
-		is.GreaterOrEqual(tn.gcPercent, 250)
-		is.LessOrEqual(tn.gcPercent, 300)
+		is.GreaterOrEqual(tn.getGCPercent(), uint32(250))
+		is.LessOrEqual(tn.getGCPercent(), uint32(300))
 	}
 
 	// 1/2 threshold
@@ -52,8 +52,8 @@ func TestTuner(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		runtime.GC()
 		// ~= 100
-		is.GreaterOrEqual(tn.gcPercent, 50)
-		is.LessOrEqual(tn.gcPercent, 100)
+		is.GreaterOrEqual(tn.getGCPercent(), uint32(50))
+		is.LessOrEqual(tn.getGCPercent(), uint32(100))
 	}
 
 	// 3/4 threshold
@@ -61,7 +61,7 @@ func TestTuner(t *testing.T) {
 	runtime.GC()
 	for i := 0; i < 100; i++ {
 		runtime.GC()
-		is.Equal(MinGCPercent, tn.gcPercent)
+		is.Equal(MinGCPercent, tn.getGCPercent())
 	}
 
 	// out of threshold
@@ -69,7 +69,7 @@ func TestTuner(t *testing.T) {
 	runtime.GC()
 	for i := 0; i < 100; i++ {
 		runtime.GC()
-		is.Equal(MinGCPercent, tn.gcPercent)
+		is.Equal(MinGCPercent, tn.getGCPercent())
 	}
 }
 
@@ -84,9 +84,9 @@ func TestCalcGCPercent(t *testing.T) {
 	is.Equal(MaxGCPercent, calcGCPercent(1, 3*gb))
 	is.Equal(MaxGCPercent, calcGCPercent(gb/10, 4*gb))
 	is.Equal(MaxGCPercent, calcGCPercent(gb/2, 4*gb))
-	is.Equal(300, calcGCPercent(1*gb, 4*gb))
-	is.Equal(166, calcGCPercent(1.5*gb, 4*gb))
-	is.Equal(100, calcGCPercent(2*gb, 4*gb))
+	is.Equal(uint32(300), calcGCPercent(1*gb, 4*gb))
+	is.Equal(uint32(166), calcGCPercent(1.5*gb, 4*gb))
+	is.Equal(uint32(100), calcGCPercent(2*gb, 4*gb))
 	is.Equal(MinGCPercent, calcGCPercent(3*gb, 4*gb))
 	is.Equal(MinGCPercent, calcGCPercent(4*gb, 4*gb))
 	is.Equal(MinGCPercent, calcGCPercent(5*gb, 4*gb))
