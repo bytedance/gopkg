@@ -27,7 +27,7 @@ type testState struct {
 }
 
 func TestFinalizer(t *testing.T) {
-	maxCount := int32(1024)
+	maxCount := int32(16)
 	is := assert.New(t)
 	state := &testState{}
 	f := newFinalizer(func() {
