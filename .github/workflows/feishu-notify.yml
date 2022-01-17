@@ -10,7 +10,7 @@ jobs:
   pr-opened:
     name: Pull Request Opened Notification
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Send Feishu Message
         env:
