@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build ppc64 || s390x || mips || mips64
 // +build ppc64 s390x mips mips64
+
 //
 // from golang-go/src/os/endian_little.go
 

@@ -15,7 +15,7 @@ jobs:
     outputs:
       triggered: ${{ steps.output.outputs.triggered }}
       pr_number: ${{ steps.output.outputs.pr_number }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check pull request comment
         if: ${{ github.event_name == 'issue_comment' }}
@@ -35,7 +35,7 @@ jobs:
     name: Performance regression check
     needs: [trigger]
     if: needs.trigger.outputs.triggered == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       # In markdown URL syntax
       RUNS_URL: '[${{ github.workflow }} #${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})'
@@ -83,7 +83,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: 1.17
       - name: Benchdiff
         uses: WillAbides/benchdiff-action@v0.3.3
         id: diff
@@ -94,6 +94,7 @@ jobs:
           status_name: Benchdiff result
           status_on_degraded: neutral
           benchdiff_args: |
+            --cpu=4
             --packages="${{ steps.head.outputs.pkgs }}"
             --count=10
             --warmup-count=1
