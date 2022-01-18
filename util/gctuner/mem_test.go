@@ -1,4 +1,4 @@
-// Copyright 2021 ByteDance Inc.
+// Copyright 2022 ByteDance Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !race
-// +build !race
-
-package syncx
+package gctuner
 
 import (
-	_ "sync"
-	_ "unsafe"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-//go:noescape
-//go:linkname runtime_registerPoolCleanup sync.runtime_registerPoolCleanup
-func runtime_registerPoolCleanup(cleanup func())
+func TestMem(t *testing.T) {
+	is := assert.New(t)
+	const mb = 1024 * 1024
 
-//go:noescape
-//go:linkname runtime_poolCleanup sync.poolCleanup
-func runtime_poolCleanup()
+	heap := make([]byte, 100*mb+1)
+	inuse := readMemoryInuse()
+	t.Logf("mem inuse: %d MB", inuse/mb)
+	is.GreaterOrEqual(inuse, uint64(100*mb))
+	heap[0] = 0
+}

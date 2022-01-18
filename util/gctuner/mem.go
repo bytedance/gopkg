@@ -1,4 +1,4 @@
-// Copyright 2021 ByteDance Inc.
+// Copyright 2022 ByteDance Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !race
-// +build !race
-
-package syncx
+package gctuner
 
 import (
-	_ "sync"
-	_ "unsafe"
+	"runtime"
 )
 
-//go:noescape
-//go:linkname runtime_registerPoolCleanup sync.runtime_registerPoolCleanup
-func runtime_registerPoolCleanup(cleanup func())
+var memStats runtime.MemStats
 
-//go:noescape
-//go:linkname runtime_poolCleanup sync.poolCleanup
-func runtime_poolCleanup()
+func readMemoryInuse() uint64 {
+	runtime.ReadMemStats(&memStats)
+	return memStats.HeapInuse
+}

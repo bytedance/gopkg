@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !race
-// +build !race
+package zset
 
-package syncx
-
-import (
-	_ "sync"
-	_ "unsafe"
-)
-
-//go:noescape
-//go:linkname runtime_registerPoolCleanup sync.runtime_registerPoolCleanup
-func runtime_registerPoolCleanup(cleanup func())
-
-//go:noescape
-//go:linkname runtime_poolCleanup sync.poolCleanup
-func runtime_poolCleanup()
+// RangeOpt describes the whether the min/max is exclusive in score range.
+type RangeOpt struct {
+	ExcludeMin bool
+	ExcludeMax bool
+}
