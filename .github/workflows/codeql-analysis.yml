@@ -14,16 +14,20 @@ name: "CodeQL"
 on:
   push:
     branches: [ develop, main ]
+    paths-ignore:
+      - '**.md'
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ develop ]
+    paths-ignore:
+      - '**.md'
   schedule:
     - cron: '35 21 * * 4'
 
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       actions: read
       contents: read
@@ -44,7 +48,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: 1.17
 
       - uses: actions/cache@v2
         with:
