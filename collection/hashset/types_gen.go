@@ -20,7 +20,7 @@ package main
 import (
 	"bytes"
 	"go/format"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 )
@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	filedata, err := ioutil.ReadAll(f)
+	filedata, err := io.ReadAll(f)
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +81,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := ioutil.WriteFile("types.go", out, 0660); err != nil {
+	if err := os.WriteFile("types.go", out, 0660); err != nil {
 		panic(err)
 	}
 }
