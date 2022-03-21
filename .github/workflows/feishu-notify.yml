@@ -26,7 +26,7 @@ jobs:
             See: https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}
 
         run: |
-          sudo apt update
+          sudo apt update -y
           sudo apt install wget
           wget -q https://github.com/xiachufang/actions-feishu/releases/download/${{ env.ACTIONS_FEISHU_TAG }}/linux-amd64-actions-feishu.tar.gz
           tar zxf linux-amd64-actions-feishu.tar.gz feishu
@@ -51,7 +51,7 @@ jobs:
             See: https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}
 
         run: |
-          sudo apt update
+          sudo apt update -y
           sudo apt install wget
           wget -q https://github.com/xiachufang/actions-feishu/releases/download/${{ env.ACTIONS_FEISHU_TAG }}/linux-amd64-actions-feishu.tar.gz
           tar zxf linux-amd64-actions-feishu.tar.gz feishu
