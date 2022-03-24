@@ -15,10 +15,12 @@
 package gopool
 
 import (
+	"context"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const benchmarkTimes = 10000
@@ -50,6 +52,34 @@ func TestPool(t *testing.T) {
 		})
 	}
 	wg.Wait()
+	if n != 2000 {
+		t.Error(n)
+	}
+}
+
+func TestPool_CtxGo(t *testing.T) {
+	p := NewPool("test", 100, NewConfig())
+	var n int32
+	var wg sync.WaitGroup
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	for i := 0; i < 2000; i++ {
+		wg.Add(1)
+		p.CtxGo(timeoutCtx, func() {
+			defer wg.Done()
+			atomic.AddInt32(&n, 1)
+		})
+	}
+	closeChan := make(chan struct{}, 0)
+	go func() {
+		wg.Wait()
+		closeChan <- struct{}{}
+	}()
+	select {
+	case <-timeoutCtx.Done():
+		return
+	case <-closeChan:
+	}
 	if n != 2000 {
 		t.Error(n)
 	}

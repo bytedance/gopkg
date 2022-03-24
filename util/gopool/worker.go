@@ -55,6 +55,15 @@ func (w *worker) run() {
 				return
 			}
 			w.pool.taskLock.Unlock()
+
+			// check context before doing task
+			select {
+			case <-t.ctx.Done():
+				t.Recycle()
+				continue
+			default:
+			}
+
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -67,6 +76,7 @@ func (w *worker) run() {
 				}()
 				t.f()
 			}()
+
 			t.Recycle()
 		}
 	}()
