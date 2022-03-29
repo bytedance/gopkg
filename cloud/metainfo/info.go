@@ -21,8 +21,8 @@ import (
 // The prefix listed below may be used to tag the types of values when there is no context to carry them.
 const (
 	PrefixPersistent         = "RPC_PERSIST_"
-	PrefixTransient          = "RPC_TRANSIT_"
-	PrefixTransientUpstream  = "RPC_TRANSIT_UPSTREAM_"
+	PrefixTransient          = "RPC_TRANSIENT_"
+	PrefixTransientUpstream  = "RPC_TRANSIENT_UPSTREAM_"
 	PrefixBackward           = "RPC_BACKWARD_"
 	PrefixBackwardDownstream = "RPC_BACKWARD_DOWNSTREAM_"
 
