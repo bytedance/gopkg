@@ -14,6 +14,12 @@
 
 package mcache
 
+import "math/bits"
+
+func bsr(x int) int {
+	return bits.Len64(uint64(x)) - 1
+}
+
 func isPowerOfTwo(x int) bool {
 	return (x & (-x)) == x
 }
