@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 )
 
-const (
+var (
 	MaxGCPercent uint32 = 500
 	MinGCPercent uint32 = 50
 )
@@ -62,6 +62,16 @@ func GetGCPercent() uint32 {
 		return defaultGCPercent
 	}
 	return globalTuner.getGCPercent()
+}
+
+// SetMaxGCPercent sets the new max gc percent value.
+func SetMaxGCPercent(n uint32) uint32 {
+	return atomic.SwapUint32(&MaxGCPercent, n)
+}
+
+// SetMinGCPercent sets the new min gc percent value.
+func SetMinGCPercent(n uint32) uint32 {
+	return atomic.SwapUint32(&MinGCPercent, n)
 }
 
 // only allow one gc tuner in one process

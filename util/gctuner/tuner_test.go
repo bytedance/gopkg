@@ -91,3 +91,17 @@ func TestCalcGCPercent(t *testing.T) {
 	is.Equal(MinGCPercent, calcGCPercent(4*gb, 4*gb))
 	is.Equal(MinGCPercent, calcGCPercent(5*gb, 4*gb))
 }
+
+func TestChangeGCPercent(t *testing.T) {
+	is := assert.New(t)
+
+	old := MinGCPercent
+	retOld := SetMinGCPercent(10)
+	is.Equal(old, retOld)
+	is.Equal(uint32(10), MinGCPercent)
+
+	old = MaxGCPercent
+	retOld = SetMaxGCPercent(1000)
+	is.Equal(old, retOld)
+	is.Equal(uint32(1000), MaxGCPercent)
+}
