@@ -64,9 +64,19 @@ func GetGCPercent() uint32 {
 	return globalTuner.getGCPercent()
 }
 
+// GetMaxGCPercent returns the max gc percent value.
+func GetMaxGCPercent() uint32 {
+	return atomic.LoadUint32(&maxGCPercent)
+}
+
 // SetMaxGCPercent sets the new max gc percent value.
 func SetMaxGCPercent(n uint32) uint32 {
 	return atomic.SwapUint32(&maxGCPercent, n)
+}
+
+// GetMinGCPercent returns the min gc percent value.
+func GetMinGCPercent() uint32 {
+	return atomic.LoadUint32(&minGCPercent)
 }
 
 // SetMinGCPercent sets the new min gc percent value.
