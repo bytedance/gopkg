@@ -34,7 +34,7 @@ func TestTuner(t *testing.T) {
 	// no heap
 	for i := 0; i < 100; i++ {
 		runtime.GC()
-		is.Equal(MaxGCPercent, tn.getGCPercent())
+		is.Equal(maxGCPercent, tn.getGCPercent())
 	}
 
 	// 1/4 threshold
@@ -61,7 +61,7 @@ func TestTuner(t *testing.T) {
 	runtime.GC()
 	for i := 0; i < 100; i++ {
 		runtime.GC()
-		is.Equal(MinGCPercent, tn.getGCPercent())
+		is.Equal(minGCPercent, tn.getGCPercent())
 	}
 
 	// out of threshold
@@ -69,7 +69,7 @@ func TestTuner(t *testing.T) {
 	runtime.GC()
 	for i := 0; i < 100; i++ {
 		runtime.GC()
-		is.Equal(MinGCPercent, tn.getGCPercent())
+		is.Equal(minGCPercent, tn.getGCPercent())
 	}
 }
 
@@ -81,13 +81,27 @@ func TestCalcGCPercent(t *testing.T) {
 	is.Equal(defaultGCPercent, calcGCPercent(0, 1))
 	is.Equal(defaultGCPercent, calcGCPercent(1, 0))
 
-	is.Equal(MaxGCPercent, calcGCPercent(1, 3*gb))
-	is.Equal(MaxGCPercent, calcGCPercent(gb/10, 4*gb))
-	is.Equal(MaxGCPercent, calcGCPercent(gb/2, 4*gb))
+	is.Equal(maxGCPercent, calcGCPercent(1, 3*gb))
+	is.Equal(maxGCPercent, calcGCPercent(gb/10, 4*gb))
+	is.Equal(maxGCPercent, calcGCPercent(gb/2, 4*gb))
 	is.Equal(uint32(300), calcGCPercent(1*gb, 4*gb))
 	is.Equal(uint32(166), calcGCPercent(1.5*gb, 4*gb))
 	is.Equal(uint32(100), calcGCPercent(2*gb, 4*gb))
-	is.Equal(MinGCPercent, calcGCPercent(3*gb, 4*gb))
-	is.Equal(MinGCPercent, calcGCPercent(4*gb, 4*gb))
-	is.Equal(MinGCPercent, calcGCPercent(5*gb, 4*gb))
+	is.Equal(minGCPercent, calcGCPercent(3*gb, 4*gb))
+	is.Equal(minGCPercent, calcGCPercent(4*gb, 4*gb))
+	is.Equal(minGCPercent, calcGCPercent(5*gb, 4*gb))
+}
+
+func TestChangeGCPercent(t *testing.T) {
+	is := assert.New(t)
+
+	old := minGCPercent
+	retOld := SetMinGCPercent(10)
+	is.Equal(old, retOld)
+	is.Equal(uint32(10), minGCPercent)
+
+	old = maxGCPercent
+	retOld = SetMaxGCPercent(1000)
+	is.Equal(old, retOld)
+	is.Equal(uint32(1000), maxGCPercent)
 }
