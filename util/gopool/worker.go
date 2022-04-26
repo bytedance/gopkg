@@ -58,10 +58,11 @@ func (w *worker) run() {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						msg := fmt.Sprintf("GOPOOL: panic in pool: %s: %v: %s", w.pool.name, r, debug.Stack())
-						logger.CtxErrorf(t.ctx, msg)
 						if w.pool.panicHandler != nil {
 							w.pool.panicHandler(t.ctx, r)
+						} else {
+							msg := fmt.Sprintf("GOPOOL: panic in pool: %s: %v: %s", w.pool.name, r, debug.Stack())
+							logger.CtxErrorf(t.ctx, msg)
 						}
 					}
 				}()
