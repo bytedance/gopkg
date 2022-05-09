@@ -202,13 +202,8 @@ func xxh3HashLarge128(xinput unsafe.Pointer, l int) (acc [2]uint64) {
 	acc[1] = uint64(length * prime64_1)
 	acc[0] = uint64(^(length * prime64_2))
 
-	if avx2 {
-		accumAVX2(&xacc, xinput, xsecret, length)
-	} else if sse2 {
-		accumSSE2(&xacc, xinput, xsecret, length)
-	} else {
-		accumScalar(&xacc, xinput, xsecret, length)
-	}
+	accum(&xacc, xinput, xsecret, length)
+
 	// merge xacc
 	acc[1] += mix(xacc[0]^xsecret_011, xacc[1]^xsecret_019)
 	acc[1] += mix(xacc[2]^xsecret_027, xacc[3]^xsecret_035)
