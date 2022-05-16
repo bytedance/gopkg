@@ -31,6 +31,8 @@ type Pool interface {
 	CtxGo(ctx context.Context, f func())
 	// SetPanicHandler sets the panic handler.
 	SetPanicHandler(f func(context.Context, interface{}))
+	// WorkerCount returns the number of running workers
+	WorkerCount() int32
 }
 
 var taskPool sync.Pool
