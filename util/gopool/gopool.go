@@ -52,6 +52,11 @@ func SetPanicHandler(f func(context.Context, interface{})) {
 	defaultPool.SetPanicHandler(f)
 }
 
+// WorkerCount returns the number of global default pool's running workers
+func WorkerCount() int32 {
+	return defaultPool.WorkerCount()
+}
+
 // RegisterPool registers a new pool to the global map.
 // GetPool can be used to get the registered pool by name.
 // returns error if the same name is registered.
