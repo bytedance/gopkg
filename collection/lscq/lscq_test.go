@@ -17,6 +17,7 @@ package lscq
 import (
 	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/bytedance/gopkg/collection/skipset"
 	"github.com/bytedance/gopkg/lang/fastrand"
@@ -179,5 +180,23 @@ func TestUnboundedQueue(t *testing.T) {
 
 	if s1.Len() != s2.Len() {
 		t.Fatal("invalid")
+	}
+}
+
+type foo struct {
+	val int
+}
+
+func TestPointerQueue(t *testing.T) {
+	q := NewPointer()
+
+	for i := 0; i < 10; i++ {
+		q.Enqueue(unsafe.Pointer(&foo{val: i}))
+	}
+
+	for i := 0; i < 10; i++ {
+		if p, ok := q.Dequeue(); !ok || (*foo)(p).val != i {
+			t.Fatal("got:", (*foo)(p).val, ok, "expect:", i, true)
+		}
 	}
 }
