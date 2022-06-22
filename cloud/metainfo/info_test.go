@@ -293,6 +293,21 @@ func TestTransferForward(t *testing.T) {
 	assert(t, z == "tb")
 }
 
+func TestOverride(t *testing.T) {
+	ctx := context.Background()
+	ctx = metainfo.WithValue(ctx, "base", "base")
+	ctx = metainfo.WithValue(ctx, "base2", "base")
+	ctx = metainfo.WithValue(ctx, "base3", "base")
+
+	ctx1 := metainfo.WithValue(ctx, "a", "a")
+	ctx2 := metainfo.WithValue(ctx, "b", "b")
+
+	av, ae := metainfo.GetValue(ctx1, "a")
+	bv, be := metainfo.GetValue(ctx2, "b")
+	assert(t, ae && av == "a", ae, av)
+	assert(t, be && bv == "b", be, bv)
+}
+
 ///////////////////////////////////////////////
 
 func initMetaInfo(count int) (context.Context, []string, []string) {
