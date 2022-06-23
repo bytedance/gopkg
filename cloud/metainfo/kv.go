@@ -47,7 +47,7 @@ func (n *node) addTransient(k, v string) *node {
 	if res, ok := remove(n.stale, k); ok {
 		return &node{
 			persistent: n.persistent,
-			transient: append(n.transient, kv{
+			transient: appendEx(n.transient, kv{
 				key: k,
 				val: v,
 			}),
@@ -67,7 +67,7 @@ func (n *node) addTransient(k, v string) *node {
 	}
 
 	r := *n
-	r.transient = append(r.transient, kv{
+	r.transient = appendEx(r.transient, kv{
 		key: k,
 		val: v,
 	})
@@ -86,7 +86,7 @@ func (n *node) addPersistent(k, v string) *node {
 		return &r
 	}
 	r := *n
-	r.persistent = append(r.persistent, kv{
+	r.persistent = appendEx(r.persistent, kv{
 		key: k,
 		val: v,
 	})
@@ -167,8 +167,13 @@ func search(kvs []kv, key string) (idx int, ok bool) {
 
 func remove(kvs []kv, key string) (res []kv, removed bool) {
 	if idx, ok := search(kvs, key); ok {
-		res = append(res, kvs[:idx]...)
-		res = append(res, kvs[idx+1:]...)
+		if cnt := len(kvs); cnt == 1 {
+			removed = true
+			return
+		}
+		res = make([]kv, len(kvs)-1)
+		copy(res, kvs[:idx])
+		copy(res[idx:], kvs[idx+1:])
 		return res, true
 	}
 	return kvs, false
@@ -188,4 +193,11 @@ func withNode(ctx context.Context, n *node) context.Context {
 		return ctx
 	}
 	return context.WithValue(ctx, ctxKey, n)
+}
+
+func appendEx(arr []kv, x kv) (res []kv) {
+	res = make([]kv, len(arr)+1)
+	copy(res, arr)
+	res[len(arr)] = x
+	return res
 }

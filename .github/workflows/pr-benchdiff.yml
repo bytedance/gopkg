@@ -36,6 +36,7 @@ jobs:
     needs: [trigger]
     if: needs.trigger.outputs.triggered == 'true'
     runs-on: self-hosted
+    timeout-minutes: 30
     env:
       # In markdown URL syntax
       RUNS_URL: '[${{ github.workflow }} #${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})'
