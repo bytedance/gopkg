@@ -130,7 +130,7 @@ func replaceString(data string) string {
 		`&int64Node{
 		score: hash(key),`, -1)
 
-	// Refactor comparsion.
+	// Refactor comparison.
 	data = data + "\n"
 	data += `// Return 1 if n is bigger, 0 if equal, else -1.
 func (n *stringNode) cmp(score uint64, key string) int {
