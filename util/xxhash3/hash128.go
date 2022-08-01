@@ -195,7 +195,7 @@ func xxh3HashLarge128(xinput unsafe.Pointer, l int) (acc [2]uint64) {
 		return [2]uint64{accHigh64, accLow64}
 	}
 
-	xacc = [8]uint64{
+	var xacc = [8]uint64{
 		prime32_3, prime64_1, prime64_2, prime64_3,
 		prime64_4, prime32_2, prime64_5, prime32_1}
 
