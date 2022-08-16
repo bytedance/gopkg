@@ -117,7 +117,7 @@ func xxh3HashLarge(xinput unsafe.Pointer, l int) (acc uint64) {
 		return xxh3Avalanche(acc)
 	}
 
-	xacc = [8]uint64{
+	var xacc = [8]uint64{
 		prime32_3, prime64_1, prime64_2, prime64_3,
 		prime64_4, prime32_2, prime64_5, prime32_1}
 
