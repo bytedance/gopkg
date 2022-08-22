@@ -180,6 +180,29 @@ func TestGetAllPersistent(t *testing.T) {
 	}
 }
 
+func TestRangePersistent(t *testing.T) {
+	ctx := context.Background()
+
+	ss := []string{"1", "2", "3"}
+	for _, k := range ss {
+		ctx = metainfo.WithPersistentValue(ctx, "key"+k, "val"+k)
+	}
+
+	m := make(map[string]string, 3)
+	f := func(k, v string) bool {
+		m[k] = v
+		return true
+	}
+
+	metainfo.RangePersistentValues(ctx, f)
+	assert(t, m != nil)
+	assert(t, len(m) == len(ss))
+
+	for _, k := range ss {
+		assert(t, m["key"+k] == "val"+k)
+	}
+}
+
 func TestGetAllPersistent2(t *testing.T) {
 	ctx := context.Background()
 
@@ -374,6 +397,14 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.GetAllPersistentValues(ctx)
 		}
+	case "RangePersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			metainfo.RangePersistentValues(ctx, func(_, _ string) bool {
+				return true
+			})
+		}
 	case "WithPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -546,6 +577,7 @@ func BenchmarkAll(b *testing.B) {
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
+		"RangePersistentValues",
 		"WithPersistentValue",
 		"WithPersistentValueAcc",
 		"DelPersistentValue",
@@ -570,6 +602,7 @@ func BenchmarkAllParallel(b *testing.B) {
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
+		"RangePersistentValues",
 		"WithPersistentValue",
 		"WithPersistentValueAcc",
 		"DelPersistentValue",

@@ -131,6 +131,23 @@ func GetAllPersistentValues(ctx context.Context) (m map[string]string) {
 	return
 }
 
+// RangePersistentValues calls f sequentially for each persistent kv.
+// If f returns false, range stops the iteration.
+func RangePersistentValues(ctx context.Context, f func(k, v string) bool) {
+	n := getNode(ctx)
+	if n == nil {
+		return
+	}
+
+	for _, kv := range n.persistent {
+		if !f(kv.key, kv.val) {
+			break
+		}
+	}
+
+	return
+}
+
 // WithPersistentValue sets the value info the context by the given key.
 // This value will be propagated to the services along the RPC call chain.
 func WithPersistentValue(ctx context.Context, k, v string) context.Context {
