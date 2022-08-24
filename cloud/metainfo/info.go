@@ -73,6 +73,31 @@ func GetAllValues(ctx context.Context) (m map[string]string) {
 	return
 }
 
+// RangeValues calls f sequentially for each transient kv.
+// If f returns false, range stops the iteration.
+func RangeValues(ctx context.Context, f func(k, v string) bool) {
+	n := getNode(ctx)
+	if n == nil {
+		return
+	}
+
+	if cnt := len(n.stale) + len(n.transient); cnt == 0 {
+		return
+	}
+
+	for _, kv := range n.stale {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+
+	for _, kv := range n.transient {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+}
+
 // WithValue sets the value into the context by the given key.
 // This value will be propagated to the next service/endpoint through an RPC call.
 //
@@ -144,8 +169,6 @@ func RangePersistentValues(ctx context.Context, f func(k, v string) bool) {
 			break
 		}
 	}
-
-	return
 }
 
 // WithPersistentValue sets the value info the context by the given key.
