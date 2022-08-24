@@ -48,6 +48,8 @@ metainfo 包提供了几个常量字符串前缀，用于无 context（例如网
     - 从 context 里获取指定 key 的 transient 数据（包括 transient-upstream 数据）。
 - `GetAllValues(ctx context.Context) map[string]string`
     - 从 context 里获取所有 transient 数据（包括 transient-upstream 数据）。
+- `RangeValues(ctx context.Context, f func(k, v string) bool)`
+    - 从 context 里基于 f 过滤获取 transient 数据（包括 transient-upstream 数据）。
 - `WithValue(ctx context.Context, k string, v string) context.Context`
     - 向 context 里添加一个 transient 数据。
 - `DelValue(ctx context.Context, k string) context.Context`
@@ -56,6 +58,8 @@ metainfo 包提供了几个常量字符串前缀，用于无 context（例如网
     - 从 context 里获取指定 key 的 persistent 数据。
 - `GetAllPersistentValues(ctx context.Context) map[string]string`
     - 从 context 里获取所有 persistent 数据。
+- `RangePersistentValues(ctx context.Context, f func(k, v string) bool)`
+    - 从 context 里基于 f 过滤获取 persistent 数据。
 - `WithPersistentValue(ctx context.Context, k string, v string) context.Context`
     - 向 context 里添加一个 persistent 数据。
 - `DelPersistentValue(ctx context.Context, k string) context.Context`
