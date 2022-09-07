@@ -4,8 +4,11 @@
 package lscq
 
 import (
+	"golang.org/x/sys/cpu"
 	"unsafe"
 )
+
+var arm64HasAtomics = cpu.ARM64.HasATOMICS
 
 type uint128 [2]uint64
 
