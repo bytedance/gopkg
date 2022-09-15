@@ -131,6 +131,8 @@ type pointerSCQ struct {
 type scqNodePointer struct {
 	flags uint64 // isSafe 1-bit + isEmpty 1-bit + cycle 62-bit
 	data  unsafe.Pointer
+	_     sync.Mutex                              // Only for architectures that do not support 128bit atomic operations
+	_     [128 - unsafe.Sizeof(sync.Mutex{})]byte // The x86_64 instruction CMPXCHG16B requires 128bit alignment
 }
 
 func (q *pointerSCQ) Enqueue(data unsafe.Pointer) bool {

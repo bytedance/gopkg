@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -131,6 +131,8 @@ type uint64SCQ struct {
 type scqNodeUint64 struct {
 	flags uint64 // isSafe 1-bit + isEmpty 1-bit + cycle 62-bit
 	data  uint64
+	_     sync.Mutex                              // Only for architectures that do not support 128bit atomic operations
+	_     [128 - unsafe.Sizeof(sync.Mutex{})]byte // The x86_64 instruction CMPXCHG16B requires 128bit alignment
 }
 
 func (q *uint64SCQ) Enqueue(data uint64) bool {
