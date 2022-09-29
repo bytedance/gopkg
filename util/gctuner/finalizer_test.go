@@ -36,9 +36,8 @@ func TestFinalizer(t *testing.T) {
 			t.Fatalf("cannot exec finalizer callback after f has been gc")
 		}
 	})
-	for i := int32(1); i <= maxCount; i++ {
+	for atomic.LoadInt32(&state.count) < maxCount {
 		runtime.GC()
-		is.Equal(atomic.LoadInt32(&state.count), i)
 	}
 	is.Nil(f.ref)
 
