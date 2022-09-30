@@ -69,7 +69,7 @@ func TestTuner(t *testing.T) {
 	// out of threshold
 	testHeap = make([]byte, threshold+1024)
 	runtime.GC()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 8; i++ {
 		runtime.GC()
 		is.Equal(minGCPercent, tn.getGCPercent())
 	}

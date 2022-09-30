@@ -40,11 +40,10 @@ func TestFinalizer(t *testing.T) {
 		runtime.GC()
 	}
 	is.Nil(f.ref)
-
 	f.stop()
-	is.Equal(atomic.LoadInt32(&state.count), maxCount)
-	runtime.GC()
-	is.Equal(atomic.LoadInt32(&state.count), maxCount)
-	runtime.GC()
-	is.Equal(atomic.LoadInt32(&state.count), maxCount)
+	lastCount := atomic.LoadInt32(&state.count)
+	for i := 0; i < 10; i++ {
+		runtime.GC()
+		is.Equal(lastCount, atomic.LoadInt32(&state.count))
+	}
 }
