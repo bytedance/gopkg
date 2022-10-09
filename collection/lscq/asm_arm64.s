@@ -8,28 +8,28 @@ TEXT ·compareAndSwapUint128(SB), NOSPLIT, $0-41
 	MOVD	new1+24(FP), R4
 	MOVD	new2+32(FP), R5
 	MOVBU	·arm64HasAtomics+0(SB), R1
-    CBZ     R1, load_store_loop
+	CBZ     R1, load_store_loop
 	ORR     R2, ZR, R6
 	ORR     R3, ZR, R7
 	CASPD   (R2, R3), (R0), (R4, R5)
 	CMP     R2, R6
 	BNE     ok
 	CMP     R3, R7
-    CSET	EQ, R0
-    MOVB	R0, ret+40(FP)
-    RET
+	CSET	EQ, R0
+	MOVB	R0, ret+40(FP)
+	RET
 load_store_loop:
-    LDAXP	(R0), (R6, R7)
-    CMP	    R2, R6
-    BNE     ok
-    CMP     R3, R7
-    BNE     ok
-    STLXP	(R4, R5), (R0), R6
-    CBNZ	R6, load_store_loop
+	LDAXP	(R0), (R6, R7)
+	CMP	    R2, R6
+	BNE     ok
+	CMP     R3, R7
+	BNE     ok
+	STLXP	(R4, R5), (R0), R6
+	CBNZ	R6, load_store_loop
 ok:
-    CSET	EQ, R0
-    MOVB	R0, ret+40(FP)
-    RET
+	CSET	EQ, R0
+	MOVB	R0, ret+40(FP)
+	RET
 
 TEXT ·loadUint128(SB),NOSPLIT,$0-24
 	MOVD	ptr+0(FP), R0
