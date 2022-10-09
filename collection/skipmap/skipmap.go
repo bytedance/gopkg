@@ -198,6 +198,7 @@ func (s *Int64Map) Store(key int64, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt64(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
