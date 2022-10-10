@@ -8,22 +8,22 @@ TEXT ·compareAndSwapUint128(SB), NOSPLIT, $0-41
 	MOVD	new1+24(FP), R4
 	MOVD	new2+32(FP), R5
 	MOVBU	·arm64HasAtomics+0(SB), R1
-	CBZ     R1, load_store_loop
-	ORR     R2, ZR, R6
-	ORR     R3, ZR, R7
-	CASPD   (R2, R3), (R0), (R4, R5)
-	CMP     R2, R6
-	BNE     ok
-	CMP     R3, R7
+	CBZ 	R1, load_store_loop
+	MOVD	R6, R2
+	MOVD	R7, R3
+	CASPD	(R2, R3), (R0), (R4, R5)
+	CMP 	R2, R6
+	BNE 	ok
+	CMP 	R3, R7
 	CSET	EQ, R0
 	MOVB	R0, ret+40(FP)
 	RET
 load_store_loop:
 	LDAXP	(R0), (R6, R7)
-	CMP	    R2, R6
-	BNE     ok
-	CMP     R3, R7
-	BNE     ok
+	CMP 	R2, R6
+	BNE 	ok
+	CMP 	R3, R7
+	BNE 	ok
 	STLXP	(R4, R5), (R0), R6
 	CBNZ	R6, load_store_loop
 ok:
@@ -53,37 +53,37 @@ TEXT ·loadSCQNodePointer(SB),NOSPLIT,$0
 	RET
 
 TEXT ·atomicTestAndSetFirstBit(SB),NOSPLIT,$0
-	MOVD addr+0(FP), R0
+	MOVD	addr+0(FP), R0
 load_store_loop:
-	LDAXR (R0), R1
-	ORR $(1<<63), R1, R1
-	STLXR R1, (R0), R2
-	CBNZ R2, load_store_loop
-	MOVD R1, val+8(FP)
+	LDAXR	(R0), R1
+	ORR 	$(1<<63), R1, R1
+	STLXR	R1, (R0), R2
+	CBNZ	R2, load_store_loop
+	MOVD	R1, val+8(FP)
 	RET
 
 
 TEXT ·atomicTestAndSetSecondBit(SB),NOSPLIT,$0
-	MOVD addr+0(FP), R0
+	MOVD	addr+0(FP), R0
 load_store_loop:
-	LDAXR (R0), R1
-	ORR $(1<<62), R1, R1
-	STLXR R1, (R0), R2
-	CBNZ R2, load_store_loop
-	MOVD R1, val+8(FP)
+	LDAXR	(R0), R1
+	ORR 	$(1<<62), R1, R1
+	STLXR	R1, (R0), R2
+	CBNZ	R2, load_store_loop
+	MOVD	R1, val+8(FP)
 	RET
 
 TEXT ·resetNode(SB),NOSPLIT,$0
-	MOVD addr+0(FP), R0
-	MOVD $0, 8(R0)
+	MOVD	addr+0(FP), R0
+	MOVD	$0, 8(R0)
 load_store_loop:
-	LDAXR (R0), R1
-	ORR $(1<<62), R1, R1
-	STLXR R1, (R0), R2
-	CBNZ R2, load_store_loop
+	LDAXR	(R0), R1
+	ORR 	$(1<<62), R1, R1
+	STLXR	R1, (R0), R2
+	CBNZ	R2, load_store_loop
 	RET
 
 TEXT ·runtimeEnableWriteBarrier(SB),NOSPLIT,$0
-	MOVW runtime·writeBarrier(SB), R0
-	MOVB R0, ret+0(FP)
+	MOVW	runtime·writeBarrier(SB), R0
+	MOVB	R0, ret+0(FP)
 	RET
