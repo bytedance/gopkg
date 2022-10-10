@@ -9,8 +9,8 @@ TEXT ·compareAndSwapUint128(SB), NOSPLIT, $0-41
 	MOVD	new2+32(FP), R5
 	MOVBU	·arm64HasAtomics+0(SB), R1
 	CBZ 	R1, load_store_loop
-	MOVD	R6, R2
-	MOVD	R7, R3
+	MOVD	R2, R6
+	MOVD	R3, R7
 	CASPD	(R2, R3), (R0), (R4, R5)
 	CMP 	R2, R6
 	BNE 	ok

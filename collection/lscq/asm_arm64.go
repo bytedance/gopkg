@@ -5,10 +5,11 @@ package lscq
 
 import (
 	"golang.org/x/sys/cpu"
+	"runtime"
 	"unsafe"
 )
 
-var arm64HasAtomics = cpu.ARM64.HasATOMICS
+var arm64HasAtomics = detectArm64HasAtomics()
 
 type uint128 [2]uint64
 
@@ -53,5 +54,17 @@ func atomicWriteBarrier(ptr *unsafe.Pointer) {
 	// For SCQ dequeue only. (fastpath)
 	if runtimeEnableWriteBarrier() {
 		runtimeatomicwb(ptr, nil)
+	}
+}
+
+//go:linkname sysctlEnabled internal/cpu.sysctlEnabled
+func sysctlEnabled(name []byte) bool
+
+func detectArm64HasAtomics() bool {
+	switch runtime.GOOS {
+	case "darwin":
+		return sysctlEnabled([]byte("hw.optional.armv8_1_atomics\x00"))
+	default:
+		return cpu.ARM64.HasATOMICS
 	}
 }
