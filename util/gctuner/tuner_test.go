@@ -33,15 +33,19 @@ func TestTuner(t *testing.T) {
 	is.Equal(defaultGCPercent, currentGCPercent)
 
 	// wait for tuner set gcPercent to maxGCPercent
+	t.Logf("old gc percent before gc: %d", tn.getGCPercent())
 	for tn.getGCPercent() != maxGCPercent {
 		runtime.GC()
+		t.Logf("new gc percent after gc: %d", tn.getGCPercent())
 	}
 
 	// 1/4 threshold
 	testHeap = make([]byte, threshold/4)
 	// wait for tuner set gcPercent to ~= 300
+	t.Logf("old gc percent before gc: %d", tn.getGCPercent())
 	for tn.getGCPercent() == maxGCPercent {
 		runtime.GC()
+		t.Logf("new gc percent after gc: %d", tn.getGCPercent())
 	}
 	currentGCPercent = tn.getGCPercent()
 	is.GreaterOrEqual(currentGCPercent, uint32(250))
@@ -50,8 +54,10 @@ func TestTuner(t *testing.T) {
 	// 1/2 threshold
 	testHeap = make([]byte, threshold/2)
 	// wait for tuner set gcPercent to ~= 100
+	t.Logf("old gc percent before gc: %d", tn.getGCPercent())
 	for tn.getGCPercent() == currentGCPercent {
 		runtime.GC()
+		t.Logf("new gc percent after gc: %d", tn.getGCPercent())
 	}
 	currentGCPercent = tn.getGCPercent()
 	is.GreaterOrEqual(currentGCPercent, uint32(50))
@@ -60,14 +66,16 @@ func TestTuner(t *testing.T) {
 	// 3/4 threshold
 	testHeap = make([]byte, threshold/4*3)
 	// wait for tuner set gcPercent to minGCPercent
-	for tn.getGCPercent() == currentGCPercent {
+	t.Logf("old gc percent before gc: %d", tn.getGCPercent())
+	for tn.getGCPercent() != minGCPercent {
 		runtime.GC()
+		t.Logf("new gc percent after gc: %d", tn.getGCPercent())
 	}
-	currentGCPercent = tn.getGCPercent()
 	is.Equal(minGCPercent, tn.getGCPercent())
 
 	// out of threshold
 	testHeap = make([]byte, threshold+1024)
+	t.Logf("old gc percent before gc: %d", tn.getGCPercent())
 	runtime.GC()
 	for i := 0; i < 8; i++ {
 		runtime.GC()
@@ -77,8 +85,10 @@ func TestTuner(t *testing.T) {
 	// no heap
 	testHeap = nil
 	// wait for tuner set gcPercent to maxGCPercent
+	t.Logf("old gc percent before gc: %d", tn.getGCPercent())
 	for tn.getGCPercent() != maxGCPercent {
 		runtime.GC()
+		t.Logf("new gc percent after gc: %d", tn.getGCPercent())
 	}
 }
 
