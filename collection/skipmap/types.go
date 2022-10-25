@@ -196,6 +196,7 @@ func (s *Float32Map) Store(key float32, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat32(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -681,6 +682,7 @@ func (s *Float32MapDesc) Store(key float32, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat32Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -1166,6 +1168,7 @@ func (s *Float64Map) Store(key float64, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat64(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -1651,6 +1654,7 @@ func (s *Float64MapDesc) Store(key float64, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockFloat64Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -2136,6 +2140,7 @@ func (s *Int32Map) Store(key int32, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt32(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -2621,6 +2626,7 @@ func (s *Int32MapDesc) Store(key int32, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt32Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -3106,6 +3112,7 @@ func (s *Int16Map) Store(key int16, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt16(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -3591,6 +3598,7 @@ func (s *Int16MapDesc) Store(key int16, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt16Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -4076,6 +4084,7 @@ func (s *IntMap) Store(key int, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockInt(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -4561,6 +4570,7 @@ func (s *IntMapDesc) Store(key int, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockIntDesc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -5046,6 +5056,7 @@ func (s *Uint64Map) Store(key uint64, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint64(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -5531,6 +5542,7 @@ func (s *Uint64MapDesc) Store(key uint64, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint64Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -6016,6 +6028,7 @@ func (s *Uint32Map) Store(key uint32, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint32(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -6501,6 +6514,7 @@ func (s *Uint32MapDesc) Store(key uint32, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint32Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -6986,6 +7000,7 @@ func (s *Uint16Map) Store(key uint16, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint16(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -7471,6 +7486,7 @@ func (s *Uint16MapDesc) Store(key uint16, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint16Desc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -7956,6 +7972,7 @@ func (s *UintMap) Store(key uint, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUint(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -8441,6 +8458,7 @@ func (s *UintMapDesc) Store(key uint, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockUintDesc(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
@@ -8922,6 +8940,7 @@ func (s *StringMap) Store(key string, value interface{}) {
 		nn.flags.SetTrue(fullyLinked)
 		unlockString(preds, highestLocked)
 		atomic.AddInt64(&s.length, 1)
+		return
 	}
 }
 
