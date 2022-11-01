@@ -80,22 +80,7 @@ func RangeValues(ctx context.Context, f func(k, v string) bool) {
 	if n == nil {
 		return
 	}
-
-	if cnt := len(n.stale) + len(n.transient); cnt == 0 {
-		return
-	}
-
-	for _, kv := range n.stale {
-		if !f(kv.key, kv.val) {
-			return
-		}
-	}
-
-	for _, kv := range n.transient {
-		if !f(kv.key, kv.val) {
-			return
-		}
-	}
+	rangeNode(n, f)
 }
 
 // WithValue sets the value into the context by the given key.
@@ -163,12 +148,7 @@ func RangePersistentValues(ctx context.Context, f func(k, v string) bool) {
 	if n == nil {
 		return
 	}
-
-	for _, kv := range n.persistent {
-		if !f(kv.key, kv.val) {
-			break
-		}
-	}
+	rangePersistentNode(n, f)
 }
 
 // WithPersistentValue sets the value info the context by the given key.
@@ -201,4 +181,28 @@ func DelPersistentValue(ctx context.Context, k string) context.Context {
 		}
 	}
 	return ctx
+}
+
+func rangeNode(n *node, f func(k, v string) bool) {
+	if cnt := len(n.stale) + len(n.transient); cnt == 0 {
+		return
+	}
+	for _, kv := range n.stale {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+	for _, kv := range n.transient {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+}
+
+func rangePersistentNode(n *node, f func(k, v string) bool) {
+	for _, kv := range n.persistent {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
 }

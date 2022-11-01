@@ -77,13 +77,19 @@ func SaveMetaInfoToMap(ctx context.Context, m map[string]string) {
 	if ctx == nil || m == nil {
 		return
 	}
-	ctx = TransferForward(ctx)
-	for k, v := range GetAllValues(ctx) {
+	n := getNode(ctx)
+	if n == nil {
+		return
+	}
+	n = n.transferForward()
+	rangeNode(n, func(k, v string) bool {
 		m[PrefixTransient+k] = v
-	}
-	for k, v := range GetAllPersistentValues(ctx) {
+		return true
+	})
+	rangePersistentNode(n, func(k, v string) bool {
 		m[PrefixPersistent+k] = v
-	}
+		return true
+	})
 }
 
 // sliceToMap converts a kv slice to map. If the slice is empty, an empty map will be returned instead of nil.
