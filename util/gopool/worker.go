@@ -41,6 +41,7 @@ func (w *worker) run() {
 	go func() {
 		for {
 			var t *task
+			var panicked bool
 			w.pool.taskLock.Lock()
 			if w.pool.taskHead != nil {
 				t = w.pool.taskHead
@@ -64,10 +65,16 @@ func (w *worker) run() {
 							msg := fmt.Sprintf("GOPOOL: panic in pool: %s: %v: %s", w.pool.name, r, debug.Stack())
 							logger.CtxErrorf(t.ctx, msg)
 						}
+						panicked = true
 					}
 				}()
 				t.f()
 			}()
+			// if task function panicked, don't reuse the goroutine
+			// because the current goroutine may be already attached wrong states(like pprof labels).
+			if panicked {
+				return
+			}
 			t.Recycle()
 		}
 	}()
