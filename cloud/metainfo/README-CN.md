@@ -28,7 +28,7 @@ API 参考
 
 1. 出于兼容性和普适性，元信息的形式为字符串的 key value 对。
 2. 空串作为 key 或者 value 都是无效的。
-3. 由于 context 的特性，程序对 metainfo 的增删改只会对拥有相同的 contetxt 或者其子 context 的代码可见。
+3. 由于 context 的特性，程序对 metainfo 的增删改只会对拥有相同的 context 或者其子 context 的代码可见。
 
 **常量**
 
