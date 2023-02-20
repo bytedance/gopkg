@@ -1,0 +1,102 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/bytedance/gopkg/collection/zset
+cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+BenchmarkContains100Hits
+BenchmarkContains100Hits/sortedset
+BenchmarkContains100Hits/sortedset  	  100000	        46.56 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        47.39 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        45.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        41.28 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        39.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        39.57 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        39.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        40.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        39.77 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains100Hits/sortedset  	  100000	        39.31 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits
+BenchmarkContains50Hits/sortedset
+BenchmarkContains50Hits/sortedset   	  100000	        41.63 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        41.87 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        46.41 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        49.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        47.99 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        42.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        42.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        42.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        42.13 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContains50Hits/sortedset   	  100000	        42.21 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits
+BenchmarkContainsNoHits/sortedset
+BenchmarkContainsNoHits/sortedset   	  100000	        21.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.67 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.49 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.46 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.44 ns/op	       0 B/op	       0 allocs/op
+BenchmarkContainsNoHits/sortedset   	  100000	        21.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd
+BenchmarkAdd/sortedset
+BenchmarkAdd/sortedset              	  100000	        53.23 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        53.28 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        52.25 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        53.12 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        53.74 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        59.74 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        53.22 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        52.10 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        53.37 ns/op	       2 B/op	       0 allocs/op
+BenchmarkAdd/sortedset              	  100000	        52.78 ns/op	       2 B/op	       0 allocs/op
+Benchmark1Add99Contains
+Benchmark1Add99Contains/sortedset
+Benchmark1Add99Contains/sortedset   	  100000	        36.56 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        40.71 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        40.58 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        36.64 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        36.66 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        39.72 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        42.04 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        39.42 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        42.95 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add99Contains/sortedset   	  100000	        44.24 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains
+Benchmark10Add90Contains/sortedset
+Benchmark10Add90Contains/sortedset  	  100000	        48.52 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        48.40 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        47.54 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        48.08 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        47.24 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        47.21 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        48.79 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        50.09 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        52.32 ns/op	       0 B/op	       0 allocs/op
+Benchmark10Add90Contains/sortedset  	  100000	        50.98 ns/op	       0 B/op	       0 allocs/op
+Benchmark50Add50Contains
+Benchmark50Add50Contains/sortedset
+Benchmark50Add50Contains/sortedset  	  100000	        59.00 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        58.15 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        58.60 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        55.10 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        63.92 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        55.23 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        56.19 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        54.66 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        60.50 ns/op	       1 B/op	       0 allocs/op
+Benchmark50Add50Contains/sortedset  	  100000	        62.25 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains
+Benchmark1Add3Incr6Remove90Contains/sortedset
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        56.65 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        56.13 ns/op	       0 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        52.15 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        51.90 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        53.68 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        52.83 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        52.07 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        50.40 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        51.85 ns/op	       1 B/op	       0 allocs/op
+Benchmark1Add3Incr6Remove90Contains/sortedset         	  100000	        52.01 ns/op	       1 B/op	       0 allocs/op
+PASS
+ok  	github.com/bytedance/gopkg/collection/zset	0.619s
