@@ -17,6 +17,8 @@ package metainfo
 import (
 	"context"
 	"strings"
+
+	"golang.org/x/net/http/httpguts"
 )
 
 // HTTP header prefixes.
@@ -107,18 +109,24 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 
 // ToHTTPHeader writes all metainfo into the given HTTP header.
 // Note that this function does not call TransferForward inside.
+// Any key or value that does not follow the HTTP specification
+// will be discarded.
 func ToHTTPHeader(ctx context.Context, h HTTPHeaderSetter) {
 	if ctx == nil || h == nil {
 		return
 	}
 
 	for k, v := range GetAllValues(ctx) {
-		k := HTTPPrefixTransient + CGIVariableToHTTPHeader(k)
-		h.Set(k, v)
+		if httpguts.ValidHeaderFieldName(k) && httpguts.ValidHeaderFieldValue(v) {
+			k := HTTPPrefixTransient + CGIVariableToHTTPHeader(k)
+			h.Set(k, v)
+		}
 	}
 
 	for k, v := range GetAllPersistentValues(ctx) {
-		k := HTTPPrefixPersistent + CGIVariableToHTTPHeader(k)
-		h.Set(k, v)
+		if httpguts.ValidHeaderFieldName(k) && httpguts.ValidHeaderFieldValue(v) {
+			k := HTTPPrefixPersistent + CGIVariableToHTTPHeader(k)
+			h.Set(k, v)
+		}
 	}
 }
