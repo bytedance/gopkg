@@ -171,7 +171,7 @@ func RangePersistentValues(ctx context.Context, f func(k, v string) bool) {
 	}
 }
 
-// WithPersistentValue sets the value info the context by the given key.
+// WithPersistentValue sets the value into the context by the given key.
 // This value will be propagated to the services along the RPC call chain.
 func WithPersistentValue(ctx context.Context, k, v string) context.Context {
 	if len(k) == 0 || len(v) == 0 {
@@ -201,4 +201,111 @@ func DelPersistentValue(ctx context.Context, k string) context.Context {
 		}
 	}
 	return ctx
+}
+
+func getKey(kvs []string, i int) string {
+	return kvs[i*2]
+}
+
+func getValue(kvs []string, i int) string {
+	return kvs[i*2+1]
+}
+
+// WithPersistentValues sets the values into the context by the given keys.
+// This value will be propagated to the services along the RPC call chain.
+func WithPersistentValues(ctx context.Context, kvs ...string) context.Context {
+	if len(kvs)%2 != 0 {
+		panic("len(kvs) must be even")
+	}
+
+	kvLen := len(kvs) / 2
+
+	if ctx == nil || len(kvs) == 0 {
+		return ctx
+	}
+
+	var n *node
+	if m := getNode(ctx); m != nil {
+		nn := *m
+		n = &nn
+		n.persistent = make([]kv, 0, len(m.persistent)+kvLen)
+		copy(n.persistent, m.persistent)
+	} else {
+		n = &node{
+			persistent: make([]kv, 0, len(kvs)),
+		}
+	}
+
+	for i := 0; i < kvLen; i++ {
+		key := getKey(kvs, i)
+		val := getValue(kvs, i)
+
+		if len(key) == 0 || len(val) == 0 {
+			continue
+		}
+
+		if idx, ok := search(n.persistent, key); ok {
+			if n.persistent[idx].val != val {
+				n.persistent[idx].val = val
+			}
+		} else {
+			n.persistent = append(n.persistent, kv{key: key, val: val})
+		}
+	}
+
+	return withNode(ctx, n)
+}
+
+// WithValue sets the values into the context by the given keys.
+// This value will be propagated to the next service/endpoint through an RPC call.
+//
+// Notice that it will not propagate any further beyond the next service/endpoint,
+// Use WithPersistentValues if you want to pass key/value pairs all the way.
+func WithValues(ctx context.Context, kvs ...string) context.Context {
+	if len(kvs)%2 != 0 {
+		panic("len(kvs) must be even")
+	}
+
+	kvLen := len(kvs) / 2
+
+	if ctx == nil || len(kvs) == 0 {
+		return ctx
+	}
+
+	var n *node
+	if m := getNode(ctx); m != nil {
+		nn := *m
+		n = &nn
+		n.transient = make([]kv, 0, len(m.transient)+kvLen)
+		copy(n.transient, m.transient)
+	} else {
+		n = &node{
+			transient: make([]kv, 0, kvLen),
+		}
+	}
+
+	for i := 0; i < kvLen; i++ {
+		key := getKey(kvs, i)
+		val := getValue(kvs, i)
+
+		if len(key) == 0 || len(val) == 0 {
+			continue
+		}
+
+		if res, ok := remove(n.stale, key); ok {
+			n.stale = res
+			n.transient = append(n.transient, kv{key: key, val: val})
+			continue
+		}
+
+		if idx, ok := search(n.transient, key); ok {
+			if n.transient[idx].val != val {
+				n.transient[idx].val = val
+			}
+		} else {
+			n.transient = append(n.transient, kv{key: key, val: val})
+		}
+	}
+
+	return withNode(ctx, n)
 }
