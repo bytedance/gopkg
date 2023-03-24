@@ -232,7 +232,7 @@ func WithPersistentValues(ctx context.Context, kvs ...string) context.Context {
 		copy(n.persistent, m.persistent)
 	} else {
 		n = &node{
-			persistent: make([]kv, 0, len(kvs)),
+			persistent: make([]kv, 0, kvLen),
 		}
 	}
 
