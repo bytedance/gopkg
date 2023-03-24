@@ -34,6 +34,23 @@ func TestWithValue(t *testing.T) {
 	assert(t, x == v)
 }
 
+func TestWithValues(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key", "Value"
+	ctx = metainfo.WithValue(ctx, k, v)
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 1; i <= 3; i++ {
+		x, ok := metainfo.GetValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
 func TestWithEmpty(t *testing.T) {
 	ctx := context.Background()
 
@@ -164,6 +181,49 @@ func TestWithPersistentEmpty(t *testing.T) {
 
 	_, ok = metainfo.GetPersistentValue(ctx, "")
 	assert(t, !ok)
+}
+
+func TestWithPersistentValues(t *testing.T) {
+	ctx := context.Background()
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 1; i <= 3; i++ {
+		x, ok := metainfo.GetPersistentValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
+func TestWithPersistentValuesEmpty(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key", "Value"
+	kvs := []string{"", v, k, ""}
+
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	_, ok := metainfo.GetPersistentValue(ctx, k)
+	assert(t, !ok)
+
+	_, ok = metainfo.GetPersistentValue(ctx, "")
+	assert(t, !ok)
+}
+
+func TestWithPersistentValuesRepeat(t *testing.T) {
+	ctx := context.Background()
+
+	kvs := []string{"Key", "Value-1", "Key", "Value-2", "Key", "Value-3"}
+
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	x, ok := metainfo.GetPersistentValue(ctx, "Key")
+	assert(t, ok)
+	assert(t, x == "Value-3")
 }
 
 func TestDelPersistentValue(t *testing.T) {
@@ -404,6 +464,12 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithValue(ctx, "key", "val")
 		}
+	case "WithValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.WithValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
+		}
 	case "WithValueAcc":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -441,6 +507,12 @@ func benchmark(b *testing.B, api string, count int) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithPersistentValue(ctx, "key", "val")
+		}
+	case "WithPersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.WithPersistentValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
 		}
 	case "WithPersistentValueAcc":
 		b.ReportAllocs()
@@ -521,6 +593,14 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.WithValue(ctx, "key", "val")
 			}
 		})
+	case "WithValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = metainfo.WithValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
+			}
+		})
 	case "WithValueAcc":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -576,6 +656,14 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.WithPersistentValue(ctx, "key", "val")
 			}
 		})
+	case "WithPersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = metainfo.WithPersistentValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
+			}
+		})
 	case "WithPersistentValueAcc":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -624,12 +712,14 @@ func BenchmarkAll(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValues",
 		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
 		"RangePersistentValues",
 		"WithPersistentValue",
+		"WithPersistentValues",
 		"WithPersistentValueAcc",
 		"DelPersistentValue",
 		"SaveMetaInfoToMap",
@@ -649,9 +739,11 @@ func BenchmarkAllParallel(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValues",
 		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
+		"GetPersistentValues",
 		"GetAllPersistentValues",
 		"RangePersistentValues",
 		"WithPersistentValue",
