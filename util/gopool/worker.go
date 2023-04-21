@@ -40,8 +40,10 @@ func newWorker() interface{} {
 func (w *worker) run() {
 	go func() {
 		for {
-			var t *task
-			var panicked bool
+			var (
+				t        *task
+				panicked bool
+			)
 			w.pool.taskLock.Lock()
 			if w.pool.taskHead != nil {
 				t = w.pool.taskHead
@@ -49,7 +51,7 @@ func (w *worker) run() {
 				atomic.AddInt32(&w.pool.taskCount, -1)
 			}
 			if t == nil {
-				// if there's no task to do, exit
+				// If there's no task to do, exit
 				w.close()
 				w.pool.taskLock.Unlock()
 				w.Recycle()
@@ -70,8 +72,8 @@ func (w *worker) run() {
 				}()
 				t.f()
 			}()
-			// if task function panicked, don't reuse the goroutine
-			// because the current goroutine may be already attached wrong states(like pprof labels).
+			// If the task function panicked, don't reuse the goroutine.
+			// Because the current goroutine may be already attached wrong states(like pprof labels).
 			if panicked {
 				return
 			}
