@@ -72,12 +72,14 @@ func (w *worker) run() {
 				}()
 				t.f()
 			}()
+			t.Recycle()
 			// If the task function panicked, don't reuse the goroutine.
 			// Because the current goroutine may be already attached wrong states(like pprof labels).
 			if panicked {
+				w.close()
+				w.Recycle()
 				return
 			}
-			t.Recycle()
 		}
 	}()
 }
