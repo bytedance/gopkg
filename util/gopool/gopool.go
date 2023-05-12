@@ -17,6 +17,7 @@ package gopool
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 )
 
@@ -26,7 +27,7 @@ var defaultPool Pool
 var poolMap sync.Map
 
 func init() {
-	defaultPool = NewPool("gopool.DefaultPool", 10000, NewConfig())
+	defaultPool = NewPool("gopool.DefaultPool", math.MaxInt32, NewConfig())
 }
 
 // Go is an alternative to the go keyword, which is able to recover panic.
