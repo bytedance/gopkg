@@ -303,17 +303,15 @@ func TestSessionManager_GC(t *testing.T) {
 		}
 	}
 	for _, shard := range manager.shards {
-		shard.lock.Lock()
-		l := len(shard.m)
-		shard.lock.Unlock()
+		l := len(shard.m.Load().(sessionMap))
 		require.Equal(t, N/sd, l)
 	}
 	time.Sleep(inter+inter>>1)
 	sum := 0
 	for _, shard := range manager.shards {
-		shard.lock.Lock()
-		l := len(shard.m)
-		shard.lock.Unlock()
+		// shard.lock.Lock()
+		l := len(shard.m.Load().(sessionMap))
+		// shard.lock.Unlock()
 		sum += l
 	}
 	require.Equal(t, N/2, sum)

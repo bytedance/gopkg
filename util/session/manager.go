@@ -36,8 +36,10 @@ type ManagerOptions struct {
 
 type shard struct {
 	lock sync.RWMutex
-	m    map[SessionID]Session
+	m    atomic.Value
 }
+
+type sessionMap = map[SessionID]Session
 
 // SessionManager maintain and manage sessions
 type SessionManager struct {
@@ -50,7 +52,8 @@ var defaultShardCap = 10
 
 func newShard() *shard {
 	ret := new(shard)
-	ret.m = make(map[SessionID]Session, defaultShardCap)
+	m := make(map[SessionID]Session, defaultShardCap)
+	ret.m.Store(m)
 	return ret
 }
 
@@ -78,13 +81,30 @@ func NewSessionManager(opts ManagerOptions) SessionManager {
 // SessionID is the indentity of a session
 type SessionID uint64
 
+func (s *shard) Load(id SessionID) (Session, bool) {
+	s.lock.RLock()
+	session, ok := s.m.Load().(sessionMap)[id]
+	s.lock.RUnlock()
+	return session, ok
+}
+
+func (s *shard) Store(id SessionID, se Session) {
+	s.lock.Lock()
+	s.m.Load().(sessionMap)[id] = se
+	s.lock.Unlock()
+}
+
+func (s *shard) Delete(id SessionID) {
+	s.lock.Lock()
+	delete(s.m.Load().(sessionMap), id)
+	s.lock.Unlock()
+}
+
 // Get gets specific session 
 // or get inherited session if option EnableTransparentTransmitAsync is true
 func (self SessionManager) GetSession(id SessionID) (Session, bool) {
 	shard := self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
-	shard.lock.RLock()
-	session, ok := shard.m[id]
-	shard.lock.RUnlock()
+	session, ok := shard.Load(id)
 	if ok {
 		return session, ok
 	}
@@ -97,18 +117,14 @@ func (self SessionManager) GetSession(id SessionID) (Session, bool) {
 		return nil, false
 	}
 	shard = self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
-	shard.lock.RLock()
-	session, ok = shard.m[id]
-	shard.lock.RUnlock()
-	return session, ok
+	return shard.Load(id)
 }
 
 // BindSession binds the session with current goroutine
 func (self SessionManager) BindSession(id SessionID, s Session) {
 	shard := self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
-	shard.lock.Lock()
-	shard.m[id] = s
-	shard.lock.Unlock()
+	
+	shard.Store(id, s)
 
 	if self.opts.EnableTransparentTransmitAsync {
 		transmitSessionID(id)
@@ -123,13 +139,9 @@ func (self SessionManager) BindSession(id SessionID, s Session) {
 func (self SessionManager) UnbindSession(id SessionID) {
 	shard := self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
 	
-	shard.lock.RLock()
-	_, ok := shard.m[id]
-	shard.lock.RUnlock()
+	_, ok := shard.Load(id)
 	if ok {
-		shard.lock.Lock()
-		delete(shard.m, id)
-		shard.lock.Unlock()
+		shard.Delete(id)
 	}
 	
 	if self.opts.EnableTransparentTransmitAsync {
@@ -145,14 +157,15 @@ func (self SessionManager) GC() {
 
 	for _, shard := range self.shards {
 		shard.lock.RLock()
-		m := make(map[SessionID]Session, len(shard.m))
-		for id, s := range shard.m {
+		n := shard.m.Load().(sessionMap)
+		m := make(map[SessionID]Session, len(n))
+		for id, s := range n {
 			// Warning: may panic here?
 			if s.IsValid() {
 				m[id] = s
 			}
 		}
-		shard.m = m
+		shard.m.Store(m)
 		shard.lock.RUnlock()
 	}
 
