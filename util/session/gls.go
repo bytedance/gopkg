@@ -23,10 +23,10 @@ import (
 
 const (
 	// DefaultShardNum set the sharding number of id->sesssion map for default SessionManager
-	DefaultShardNum = 10
+	DefaultShardNum = 100
 	
 	// DefaultGCInterval set the GC interval for default SessionManager
-	DefaultGCInterval = time.Duration(0)
+	DefaultGCInterval = time.Hour
 
 	// DefaultEnableTransparentTransmitAsync enables TransparentTransmitAsync for default SessionManager
 	DefaultEnableTransparentTransmitAsync = false

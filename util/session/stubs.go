@@ -35,7 +35,7 @@ func setPprofLabel(m *labelMap)
 //go:linkname getPproLabel runtime/pprof.runtime_getProfLabel
 func getPproLabel() *labelMap
 
-const _SessionIDLabel = "gls_session_id"
+const Pprof_Label_Session_ID = "go_session_id"
 
 func transmitSessionID(id SessionID) {
 	m := getPproLabel()
@@ -46,13 +46,13 @@ func transmitSessionID(id SessionID) {
 	} else {
 		n = make(labelMap, len(*m))
 		for k, v := range *m {
-			if k != _SessionIDLabel {
+			if k != Pprof_Label_Session_ID {
 				n[k] = v
 			}
 		}
 	}
 	
-	n[_SessionIDLabel] = strconv.FormatInt(int64(id), 10)
+	n[Pprof_Label_Session_ID] = strconv.FormatInt(int64(id), 10)
 	setPprofLabel(&n)
 }
 
@@ -61,7 +61,7 @@ func getSessionID() (SessionID, bool) {
 	if m == nil {
 		return 0, false
 	}
-	if v, ok := (*m)[_SessionIDLabel]; !ok {
+	if v, ok := (*m)[Pprof_Label_Session_ID]; !ok {
 		return 0, false
 	} else {
 		id, err := strconv.ParseInt(v, 10, 64)
@@ -77,12 +77,12 @@ func clearSessionID() {
 	if m == nil {
 		return 
 	}
-	if _, ok := (*m)[_SessionIDLabel]; !ok {
+	if _, ok := (*m)[Pprof_Label_Session_ID]; !ok {
 		return
 	}
 	n := make(labelMap, len(*m))
 	for k, v := range *m {
-		if k != _SessionIDLabel {
+		if k != Pprof_Label_Session_ID {
 			n[k] = v
 		}
 	}
