@@ -8,56 +8,59 @@ Session is used to initialtively or automatically manage and transmit context be
 ## Index
 
 - [Constants](<#constants>)
-- [func BindSession\(s Session\)](<#BindSession>)
-- [func Go\(f func\(\)\)](<#Go>)
-- [func GoSession\(s Session, f func\(\)\)](<#GoSession>)
-- [func SetDefaultManager\(m SessionManager\)](<#SetDefaultManager>)
-- [func UnbindSession\(\)](<#UnbindSession>)
-- [type ManagerOptions](<#ManagerOptions>)
-- [type Session](<#Session>)
-  - [func CurSession\(\) \(Session, bool\)](<#CurSession>)
-- [type SessionCtx](<#SessionCtx>)
-  - [func NewSessionCtx\(ctx context.Context\) \*SessionCtx](<#NewSessionCtx>)
-  - [func NewSessionCtxWithTimeout\(ctx context.Context, timeout time.Duration\) \*SessionCtx](<#NewSessionCtxWithTimeout>)
-  - [func \(self SessionCtx\) Disable\(\)](<#SessionCtx.Disable>)
-  - [func \(self \*SessionCtx\) Get\(key interface\{\}\) interface\{\}](<#SessionCtx.Get>)
-  - [func \(self \*SessionCtx\) IsValid\(\) bool](<#SessionCtx.IsValid>)
-  - [func \(self SessionCtx\) WithValue\(key interface\{\}, val interface\{\}\) Session](<#SessionCtx.WithValue>)
-- [type SessionID](<#SessionID>)
-- [type SessionManager](<#SessionManager>)
-  - [func NewSessionManager\(opts ManagerOptions\) SessionManager](<#NewSessionManager>)
-  - [func \(self SessionManager\) BindSession\(id SessionID, s Session\)](<#SessionManager.BindSession>)
-  - [func \(self SessionManager\) GC\(\)](<#SessionManager.GC>)
-  - [func \(self SessionManager\) GetSession\(id SessionID\) \(Session, bool\)](<#SessionManager.GetSession>)
-  - [func \(self SessionManager\) UnbindSession\(id SessionID\)](<#SessionManager.UnbindSession>)
-- [type SessionMap](<#SessionMap>)
-  - [func NewSessionMap\(m map\[interface\{\}\]interface\{\}\) \*SessionMap](<#NewSessionMap>)
-  - [func NewSessionMapWithTimeout\(m map\[interface\{\}\]interface\{\}, timeout time.Duration\) \*SessionMap](<#NewSessionMapWithTimeout>)
-  - [func \(self \*SessionMap\) Disable\(\)](<#SessionMap.Disable>)
-  - [func \(self \*SessionMap\) Get\(key interface\{\}\) interface\{\}](<#SessionMap.Get>)
-  - [func \(self \*SessionMap\) IsValid\(\) bool](<#SessionMap.IsValid>)
-  - [func \(self \*SessionMap\) WithValue\(key interface\{\}, val interface\{\}\) Session](<#SessionMap.WithValue>)
+- [func BindSession(s Session)](<#func-bindsession>)
+- [func Go(f func())](<#func-go>)
+- [func GoSession(s Session, f func())](<#func-gosession>)
+- [func SetDefaultManager(m SessionManager)](<#func-setdefaultmanager>)
+- [func UnbindSession()](<#func-unbindsession>)
+- [type ManagerOptions](<#type-manageroptions>)
+- [type Session](<#type-session>)
+  - [func CurSession() (Session, bool)](<#func-cursession>)
+- [type SessionCtx](<#type-sessionctx>)
+  - [func NewSessionCtx(ctx context.Context) *SessionCtx](<#func-newsessionctx>)
+  - [func NewSessionCtxWithTimeout(ctx context.Context, timeout time.Duration) *SessionCtx](<#func-newsessionctxwithtimeout>)
+  - [func (self SessionCtx) Disable()](<#func-sessionctx-disable>)
+  - [func (self *SessionCtx) Get(key interface{}) interface{}](<#func-sessionctx-get>)
+  - [func (self *SessionCtx) IsValid() bool](<#func-sessionctx-isvalid>)
+  - [func (self SessionCtx) WithValue(key interface{}, val interface{}) Session](<#func-sessionctx-withvalue>)
+- [type SessionID](<#type-sessionid>)
+- [type SessionManager](<#type-sessionmanager>)
+  - [func GetDefaultManager() SessionManager](<#func-getdefaultmanager>)
+  - [func NewSessionManager(opts ManagerOptions) SessionManager](<#func-newsessionmanager>)
+  - [func (self SessionManager) BindSession(id SessionID, s Session)](<#func-sessionmanager-bindsession>)
+  - [func (self SessionManager) GC()](<#func-sessionmanager-gc>)
+  - [func (self SessionManager) GetSession(id SessionID) (Session, bool)](<#func-sessionmanager-getsession>)
+  - [func (self SessionManager) Options() ManagerOptions](<#func-sessionmanager-options>)
+  - [func (self SessionManager) UnbindSession(id SessionID)](<#func-sessionmanager-unbindsession>)
+- [type SessionMap](<#type-sessionmap>)
+  - [func NewSessionMap(m map[interface{}]interface{}) *SessionMap](<#func-newsessionmap>)
+  - [func NewSessionMapWithTimeout(m map[interface{}]interface{}, timeout time.Duration) *SessionMap](<#func-newsessionmapwithtimeout>)
+  - [func (self *SessionMap) Disable()](<#func-sessionmap-disable>)
+  - [func (self *SessionMap) Get(key interface{}) interface{}](<#func-sessionmap-get>)
+  - [func (self *SessionMap) IsValid() bool](<#func-sessionmap-isvalid>)
+  - [func (self *SessionMap) WithValue(key interface{}, val interface{}) Session](<#func-sessionmap-withvalue>)
 
 
 ## Constants
 
-<a name="DefaultShardNum"></a>
-
 ```go
 const (
     // DefaultShardNum set the sharding number of id->sesssion map for default SessionManager
-    DefaultShardNum = 10
+    DefaultShardNum = 100
 
     // DefaultGCInterval set the GC interval for default SessionManager
-    DefaultGCInterval = time.Duration(0)
+    DefaultGCInterval = time.Hour
 
     // DefaultEnableTransparentTransmitAsync enables TransparentTransmitAsync for default SessionManager
     DefaultEnableTransparentTransmitAsync = false
 )
 ```
 
-<a name="BindSession"></a>
-## func [BindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L60>)
+```go
+const Pprof_Label_Session_ID = "go_session_id"
+```
+
+## func [BindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L66>)
 
 ```go
 func BindSession(s Session)
@@ -65,8 +68,7 @@ func BindSession(s Session)
 
 BindSession binds the session with current goroutine
 
-<a name="Go"></a>
-## func [Go](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L74>)
+## func [Go](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L80>)
 
 ```go
 func Go(f func())
@@ -74,8 +76,7 @@ func Go(f func())
 
 Go calls f asynchronously and pass caller's session to the new goroutine
 
-<a name="GoSession"></a>
-## func [GoSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L84>)
+## func [GoSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L90>)
 
 ```go
 func GoSession(s Session, f func())
@@ -83,7 +84,6 @@ func GoSession(s Session, f func())
 
 SessionGo calls f asynchronously and pass s session to the new goroutine
 
-<a name="SetDefaultManager"></a>
 ## func [SetDefaultManager](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L49>)
 
 ```go
@@ -92,18 +92,16 @@ func SetDefaultManager(m SessionManager)
 
 SetDefaultManager updates default SessionManager to m
 
-<a name="UnbindSession"></a>
-## func [UnbindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L69>)
+## func [UnbindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L75>)
 
 ```go
 func UnbindSession()
 ```
 
-UnbindSession unbind a session \(if any\) with current goroutine
+### UnbindSession unbind a session \(if any\) with current goroutine
 
 Notice: If you want to end the session, please call \`Disable\(\)\` \(or whatever make the session invalid\) on your session's implementation
 
-<a name="ManagerOptions"></a>
 ## type [ManagerOptions](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L26-L35>)
 
 ManagerOptions for SessionManager
@@ -121,7 +119,6 @@ type ManagerOptions struct {
 }
 ```
 
-<a name="Session"></a>
 ## type [Session](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L27-L36>)
 
 Session represents a local storage for one session
@@ -139,8 +136,7 @@ type Session interface {
 }
 ```
 
-<a name="CurSession"></a>
-### func [CurSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L54>)
+### func [CurSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L60>)
 
 ```go
 func CurSession() (Session, bool)
@@ -148,7 +144,6 @@ func CurSession() (Session, bool)
 
 CurSession gets the session for current goroutine
 
-<a name="SessionCtx"></a>
 ## type [SessionCtx](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L40-L43>)
 
 SessionCtx implements Session with context, which means children session WON'T affect parent and sibling sessions
@@ -161,8 +156,6 @@ type SessionCtx struct {
 
 <details><summary>Example</summary>
 <p>
-
-
 
 ```go
 /**
@@ -306,7 +299,6 @@ func main() {
 </p>
 </details>
 
-<a name="NewSessionCtx"></a>
 ### func [NewSessionCtx](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L46>)
 
 ```go
@@ -315,7 +307,6 @@ func NewSessionCtx(ctx context.Context) *SessionCtx
 
 NewSessionCtx creates and enables a SessionCtx
 
-<a name="NewSessionCtxWithTimeout"></a>
 ### func [NewSessionCtxWithTimeout](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L57>)
 
 ```go
@@ -324,7 +315,6 @@ func NewSessionCtxWithTimeout(ctx context.Context, timeout time.Duration) *Sessi
 
 NewSessionCtx creates and enables a SessionCtx, and disable the session after timeout
 
-<a name="SessionCtx.Disable"></a>
 ### func \(SessionCtx\) [Disable](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L67>)
 
 ```go
@@ -333,7 +323,6 @@ func (self SessionCtx) Disable()
 
 Disable ends the session
 
-<a name="SessionCtx.Get"></a>
 ### func \(\*SessionCtx\) [Get](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L80>)
 
 ```go
@@ -342,7 +331,6 @@ func (self *SessionCtx) Get(key interface{}) interface{}
 
 Get value for specific key
 
-<a name="SessionCtx.IsValid"></a>
 ### func \(\*SessionCtx\) [IsValid](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L72>)
 
 ```go
@@ -351,7 +339,6 @@ func (self *SessionCtx) IsValid() bool
 
 IsValid tells if the session is valid at present
 
-<a name="SessionCtx.WithValue"></a>
 ### func \(SessionCtx\) [WithValue](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L88>)
 
 ```go
@@ -360,8 +347,7 @@ func (self SessionCtx) WithValue(key interface{}, val interface{}) Session
 
 Set value for specific key，and return newly effective session
 
-<a name="SessionID"></a>
-## type [SessionID](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L79>)
+## type [SessionID](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L87>)
 
 SessionID is the indentity of a session
 
@@ -369,8 +355,7 @@ SessionID is the indentity of a session
 type SessionID uint64
 ```
 
-<a name="SessionManager"></a>
-## type [SessionManager](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L43-L47>)
+## type [SessionManager](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L45-L49>)
 
 SessionManager maintain and manage sessions
 
@@ -380,8 +365,15 @@ type SessionManager struct {
 }
 ```
 
-<a name="NewSessionManager"></a>
-### func [NewSessionManager](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L59>)
+### func [GetDefaultManager](<https://github.com/bytedance/gopkg/blob/develop/util/session/gls.go#L55>)
+
+```go
+func GetDefaultManager() SessionManager
+```
+
+GetDefaultManager returns a copy of default SessionManager warning: use it only for state check
+
+### func [NewSessionManager](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L62>)
 
 ```go
 func NewSessionManager(opts ManagerOptions) SessionManager
@@ -389,8 +381,7 @@ func NewSessionManager(opts ManagerOptions) SessionManager
 
 NewSessionManager creates a SessionManager with default containers If opts.GCInterval \> 0, it will start scheduled GC\(\) loop automatically
 
-<a name="SessionManager.BindSession"></a>
-### func \(SessionManager\) [BindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L107>)
+### func \(SessionManager\) [BindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L129>)
 
 ```go
 func (self SessionManager) BindSession(id SessionID, s Session)
@@ -398,8 +389,7 @@ func (self SessionManager) BindSession(id SessionID, s Session)
 
 BindSession binds the session with current goroutine
 
-<a name="SessionManager.GC"></a>
-### func \(SessionManager\) [GC](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L141>)
+### func \(SessionManager\) [GC](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L158>)
 
 ```go
 func (self SessionManager) GC()
@@ -407,8 +397,7 @@ func (self SessionManager) GC()
 
 GC sweep invalid sessions and release unused memory
 
-<a name="SessionManager.GetSession"></a>
-### func \(SessionManager\) [GetSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L83>)
+### func \(SessionManager\) [GetSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L110>)
 
 ```go
 func (self SessionManager) GetSession(id SessionID) (Session, bool)
@@ -416,18 +405,24 @@ func (self SessionManager) GetSession(id SessionID) (Session, bool)
 
 Get gets specific session or get inherited session if option EnableTransparentTransmitAsync is true
 
-<a name="SessionManager.UnbindSession"></a>
-### func \(SessionManager\) [UnbindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L123>)
+### func \(SessionManager\) [Options](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L82>)
+
+```go
+func (self SessionManager) Options() ManagerOptions
+```
+
+Options shows the manager's Options
+
+### func \(SessionManager\) [UnbindSession](<https://github.com/bytedance/gopkg/blob/develop/util/session/manager.go#L144>)
 
 ```go
 func (self SessionManager) UnbindSession(id SessionID)
 ```
 
-UnbindSession clears current session
+#### UnbindSession clears current session
 
 Notice: If you want to end the session, please call \`Disable\(\)\` \(or whatever make the session invalid\) on your session's implementation
 
-<a name="SessionMap"></a>
 ## type [SessionMap](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L98-L102>)
 
 NewSessionMap implements Session with map, which means children session WILL affect parent session and sibling sessions
@@ -438,7 +433,6 @@ type SessionMap struct {
 }
 ```
 
-<a name="NewSessionMap"></a>
 ### func [NewSessionMap](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L105>)
 
 ```go
@@ -447,7 +441,6 @@ func NewSessionMap(m map[interface{}]interface{}) *SessionMap
 
 NewSessionMap creates and enables a SessionMap
 
-<a name="NewSessionMapWithTimeout"></a>
 ### func [NewSessionMapWithTimeout](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L116>)
 
 ```go
@@ -456,7 +449,6 @@ func NewSessionMapWithTimeout(m map[interface{}]interface{}, timeout time.Durati
 
 NewSessionCtx creates and enables a SessionCtx, and disable the session after timeout
 
-<a name="SessionMap.Disable"></a>
 ### func \(\*SessionMap\) [Disable](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L134>)
 
 ```go
@@ -465,7 +457,6 @@ func (self *SessionMap) Disable()
 
 Disable ends the session
 
-<a name="SessionMap.Get"></a>
 ### func \(\*SessionMap\) [Get](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L139>)
 
 ```go
@@ -474,7 +465,6 @@ func (self *SessionMap) Get(key interface{}) interface{}
 
 Get value for specific key
 
-<a name="SessionMap.IsValid"></a>
 ### func \(\*SessionMap\) [IsValid](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L126>)
 
 ```go
@@ -483,7 +473,6 @@ func (self *SessionMap) IsValid() bool
 
 IsValid tells if the session is valid at present
 
-<a name="SessionMap.WithValue"></a>
 ### func \(\*SessionMap\) [WithValue](<https://github.com/bytedance/gopkg/blob/develop/util/session/session.go#L150>)
 
 ```go
@@ -491,5 +480,7 @@ func (self *SessionMap) WithValue(key interface{}, val interface{}) Session
 ```
 
 Set value for specific key，and return itself
+
+
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)

@@ -78,6 +78,11 @@ func NewSessionManager(opts ManagerOptions) SessionManager {
 	return ret
 }
 
+// Options shows the manager's Options
+func (self SessionManager) Options() ManagerOptions {
+	return self.opts
+}
+
 // SessionID is the indentity of a session
 type SessionID uint64
 

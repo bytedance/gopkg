@@ -50,6 +50,12 @@ func SetDefaultManager(m SessionManager) {
 	defaultManagerObj = &m
 }
 
+// GetDefaultManager returns a copy of default SessionManager
+//   warning: use it only for state check
+func GetDefaultManager() SessionManager {
+	return *defaultManagerObj
+}
+
 // CurSession gets the session for current goroutine
 func CurSession() (Session, bool) {
 	s, ok := defaultManagerObj.GetSession(SessionID(goID()))
