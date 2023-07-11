@@ -36,7 +36,7 @@ type ManagerOptions struct {
 
 type shard struct {
 	lock sync.RWMutex
-	m    atomic.Value
+	m    map[SessionID]Session
 }
 
 type sessionMap = map[SessionID]Session
@@ -52,8 +52,7 @@ var defaultShardCap = 10
 
 func newShard() *shard {
 	ret := new(shard)
-	m := make(map[SessionID]Session, defaultShardCap)
-	ret.m.Store(m)
+	ret.m = make(map[SessionID]Session, defaultShardCap)
 	return ret
 }
 
@@ -88,20 +87,20 @@ type SessionID uint64
 
 func (s *shard) Load(id SessionID) (Session, bool) {
 	s.lock.RLock()
-	session, ok := s.m.Load().(sessionMap)[id]
+	session, ok := s.m[id]
 	s.lock.RUnlock()
 	return session, ok
 }
 
 func (s *shard) Store(id SessionID, se Session) {
 	s.lock.Lock()
-	s.m.Load().(sessionMap)[id] = se
+	s.m[id] = se
 	s.lock.Unlock()
 }
 
 func (s *shard) Delete(id SessionID) {
 	s.lock.Lock()
-	delete(s.m.Load().(sessionMap), id)
+	delete(s.m, id)
 	s.lock.Unlock()
 }
 
@@ -155,6 +154,8 @@ func (self SessionManager) UnbindSession(id SessionID) {
 }
 
 // GC sweep invalid sessions and release unused memory
+//
+//go:nocheckptr
 func (self SessionManager) GC() {
 	if !atomic.CompareAndSwapUint32(&self.inGC, 0, 1) {
 		return
@@ -162,7 +163,7 @@ func (self SessionManager) GC() {
 
 	for _, shard := range self.shards {
 		shard.lock.RLock()
-		n := shard.m.Load().(sessionMap)
+		n := shard.m
 		m := make(map[SessionID]Session, len(n))
 		for id, s := range n {
 			// Warning: may panic here?
@@ -170,7 +171,7 @@ func (self SessionManager) GC() {
 				m[id] = s
 			}
 		}
-		shard.m.Store(m)
+		shard.m = m
 		shard.lock.RUnlock()
 	}
 
