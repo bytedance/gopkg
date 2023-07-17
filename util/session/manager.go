@@ -45,6 +45,7 @@ type sessionMap = map[SessionID]Session
 type SessionManager struct {
 	shards []*shard
 	inGC   uint32
+	tik    *time.Ticker
 	opts   ManagerOptions 
 }
 
@@ -107,7 +108,7 @@ func (s *shard) Delete(id SessionID) {
 
 // Get gets specific session 
 // or get inherited session if option EnableTransparentTransmitAsync is true
-func (self SessionManager) GetSession(id SessionID) (Session, bool) {
+func (self *SessionManager) GetSession(id SessionID) (Session, bool) {
 	shard := self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
 	session, ok := shard.Load(id)
 	if ok {
@@ -126,7 +127,7 @@ func (self SessionManager) GetSession(id SessionID) (Session, bool) {
 }
 
 // BindSession binds the session with current goroutine
-func (self SessionManager) BindSession(id SessionID, s Session) {
+func (self *SessionManager) BindSession(id SessionID, s Session) {
 	shard := self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
 	
 	shard.Store(id, s)
@@ -141,7 +142,7 @@ func (self SessionManager) BindSession(id SessionID, s Session) {
 // Notice: If you want to end the session, 
 // please call `Disable()` (or whatever make the session invalid)
 // on your session's implementation
-func (self SessionManager) UnbindSession(id SessionID) {
+func (self *SessionManager) UnbindSession(id SessionID) {
 	shard := self.shards[uint64(id)%uint64(self.opts.ShardNumber)]
 	
 	_, ok := shard.Load(id)
@@ -155,7 +156,7 @@ func (self SessionManager) UnbindSession(id SessionID) {
 }
 
 // GC sweep invalid sessions and release unused memory
-func (self SessionManager) GC() {
+func (self *SessionManager) GC() {
 	if !atomic.CompareAndSwapUint32(&self.inGC, 0, 1) {
 		return
 	}
@@ -178,13 +179,21 @@ func (self SessionManager) GC() {
 }
 
 // startGC start a scheduled goroutine to call GC() according to GCInterval
-func (self SessionManager) startGC() {
+func (self *SessionManager) startGC() {
 	if self.opts.GCInterval < time.Second {
 		panic("GCInterval must be larger than 1 second")
 	}
+	self.tik = time.NewTicker(self.opts.GCInterval)
 	go func() {
-		for range time.Tick(self.opts.GCInterval) {
+		for range self.tik.C {
 			self.GC()
 		}
 	}()
+}
+
+// Close stop persistent work for the manager, like GC
+func (self SessionManager) Close() {
+	if self.tik != nil {
+		self.tik.Stop()
+	}
 }

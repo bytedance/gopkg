@@ -47,6 +47,9 @@ func init() {
 
 // SetDefaultManager updates default SessionManager to m
 func SetDefaultManager(m SessionManager) {
+	if defaultManagerObj != nil {
+		defaultManagerObj.Close()
+	}
 	defaultManagerObj = &m
 }
 
