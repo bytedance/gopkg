@@ -776,3 +776,85 @@ func BenchmarkAllParallel(b *testing.B) {
 		}
 	}
 }
+
+func TestValuesCount(t *testing.T) {
+	ctx := context.Background()
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				ctx: ctx,
+			},
+			want: 0,
+		},
+		{
+			name: "0",
+			args: args{
+				ctx: metainfo.WithPersistentValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 0,
+		},
+		{
+			name: "2",
+			args: args{
+				ctx: metainfo.WithValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metainfo.CountValues(tt.args.ctx); got != tt.want {
+				t.Errorf("ValuesCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPersistentValuesCount(t *testing.T) {
+	ctx := context.Background()
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				ctx: ctx,
+			},
+			want: 0,
+		},
+		{
+			name: "0",
+			args: args{
+				ctx: metainfo.WithValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 0,
+		},
+		{
+			name: "2",
+			args: args{
+				ctx: metainfo.WithPersistentValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metainfo.CountPersistentValues(tt.args.ctx); got != tt.want {
+				t.Errorf("ValuesCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

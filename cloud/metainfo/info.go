@@ -211,6 +211,24 @@ func getValue(kvs []string, i int) string {
 	return kvs[i*2+1]
 }
 
+// CountPersistentValues counts the length of persisten KV pairs
+func CountPersistentValues(ctx context.Context) int {
+	if n := getNode(ctx); n == nil {
+		return 0
+	} else {
+		return len(n.persistent)
+	}
+}
+
+// CountValues counts the length of transient KV pairs
+func CountValues(ctx context.Context) int {
+	if n := getNode(ctx); n == nil {
+		return 0
+	} else {
+		return len(n.transient)
+	}
+}
+
 // WithPersistentValues sets the values into the context by the given keys.
 // This value will be propagated to the services along the RPC call chain.
 func WithPersistentValues(ctx context.Context, kvs ...string) context.Context {
