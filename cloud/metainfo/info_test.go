@@ -37,15 +37,32 @@ func TestWithValue(t *testing.T) {
 func TestWithValues(t *testing.T) {
 	ctx := context.Background()
 
-	k, v := "Key", "Value"
+	k, v := "Key-0", "Value-0"
 	ctx = metainfo.WithValue(ctx, k, v)
 
 	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
 	ctx = metainfo.WithValues(ctx, kvs...)
 	assert(t, ctx != nil)
 
-	for i := 1; i <= 3; i++ {
+	for i := 0; i <= 3; i++ {
 		x, ok := metainfo.GetValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
+func TestWithPersistValues(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key-0", "Value-0"
+	ctx = metainfo.WithPersistentValue(ctx, k, v)
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 0; i <= 3; i++ {
+		x, ok := metainfo.GetPersistentValue(ctx, fmt.Sprintf("Key-%d", i))
 		assert(t, ok)
 		assert(t, x == fmt.Sprintf("Value-%d", i))
 	}

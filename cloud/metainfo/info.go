@@ -228,7 +228,7 @@ func WithPersistentValues(ctx context.Context, kvs ...string) context.Context {
 	if m := getNode(ctx); m != nil {
 		nn := *m
 		n = &nn
-		n.persistent = make([]kv, 0, len(m.persistent)+kvLen)
+		n.persistent = make([]kv, len(m.persistent), len(m.persistent)+kvLen)
 		copy(n.persistent, m.persistent)
 	} else {
 		n = &node{
@@ -276,7 +276,7 @@ func WithValues(ctx context.Context, kvs ...string) context.Context {
 	if m := getNode(ctx); m != nil {
 		nn := *m
 		n = &nn
-		n.transient = make([]kv, 0, len(m.transient)+kvLen)
+		n.transient = make([]kv, len(m.transient), len(m.transient)+kvLen)
 		copy(n.transient, m.transient)
 	} else {
 		n = &node{
