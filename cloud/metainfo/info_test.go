@@ -37,15 +37,32 @@ func TestWithValue(t *testing.T) {
 func TestWithValues(t *testing.T) {
 	ctx := context.Background()
 
-	k, v := "Key", "Value"
+	k, v := "Key-0", "Value-0"
 	ctx = metainfo.WithValue(ctx, k, v)
 
 	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
 	ctx = metainfo.WithValues(ctx, kvs...)
 	assert(t, ctx != nil)
 
-	for i := 1; i <= 3; i++ {
+	for i := 0; i <= 3; i++ {
 		x, ok := metainfo.GetValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
+func TestWithPersistValues(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key-0", "Value-0"
+	ctx = metainfo.WithPersistentValue(ctx, k, v)
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 0; i <= 3; i++ {
+		x, ok := metainfo.GetPersistentValue(ctx, fmt.Sprintf("Key-%d", i))
 		assert(t, ok)
 		assert(t, x == fmt.Sprintf("Value-%d", i))
 	}
@@ -757,5 +774,87 @@ func BenchmarkAllParallel(b *testing.B) {
 			fun := fmt.Sprintf("%s_%d", api, cnt)
 			b.Run(fun, func(b *testing.B) { benchmarkParallel(b, api, cnt) })
 		}
+	}
+}
+
+func TestValuesCount(t *testing.T) {
+	ctx := context.Background()
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				ctx: ctx,
+			},
+			want: 0,
+		},
+		{
+			name: "0",
+			args: args{
+				ctx: metainfo.WithPersistentValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 0,
+		},
+		{
+			name: "2",
+			args: args{
+				ctx: metainfo.WithValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metainfo.CountValues(tt.args.ctx); got != tt.want {
+				t.Errorf("ValuesCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPersistentValuesCount(t *testing.T) {
+	ctx := context.Background()
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				ctx: ctx,
+			},
+			want: 0,
+		},
+		{
+			name: "0",
+			args: args{
+				ctx: metainfo.WithValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 0,
+		},
+		{
+			name: "2",
+			args: args{
+				ctx: metainfo.WithPersistentValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metainfo.CountPersistentValues(tt.args.ctx); got != tt.want {
+				t.Errorf("ValuesCount() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
