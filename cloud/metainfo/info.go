@@ -225,7 +225,7 @@ func CountValues(ctx context.Context) int {
 	if n := getNode(ctx); n == nil {
 		return 0
 	} else {
-		return len(n.transient)
+		return len(n.stale) + len(n.transient)
 	}
 }
 
