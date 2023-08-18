@@ -39,6 +39,7 @@ func newWorker() interface{} {
 
 func (w *worker) run() {
 	go func() {
+		w.reserveStack(true)
 		for {
 			var t *task
 			w.pool.taskLock.Lock()
@@ -84,4 +85,16 @@ func (w *worker) zero() {
 func (w *worker) Recycle() {
 	w.zero()
 	workerPool.Put(w)
+}
+
+/*
+* reserveStack reserves 8KB memory on the stack to avoid runtime.morestack.
+ */
+func (w *worker) reserveStack(dummy bool) {
+	var buf [8 << 10]byte
+	if dummy {
+		for i := range buf {
+			buf[i] = byte(i)
+		}
+	}
 }
