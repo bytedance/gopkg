@@ -62,12 +62,12 @@ func BenchmarkChannel(b *testing.B) {
 	for _, size := range benchSizes {
 		b.Run(fmt.Sprintf("Size-%d", size), func(b *testing.B) {
 			var ch Channel
-			defer ch.Close()
 			if size < 0 {
 				ch = New(WithNonBlock())
 			} else {
 				ch = New(WithSize(size))
 			}
+			defer ch.Close()
 			b.RunParallel(func(pb *testing.PB) {
 				n := 0
 				for pb.Next() {
@@ -120,6 +120,7 @@ func TestChannelClose(t *testing.T) {
 	}
 	ch.Close()
 	for runtime.NumGoroutine() > beginGs {
+		tlogf(t, "num goroutines: %d, beginGs: %d", runtime.NumGoroutine(), beginGs)
 		runtime.Gosched()
 	}
 	<-ch.Output() // never block
@@ -272,7 +273,6 @@ func TestChannelGoroutinesThrottle(t *testing.T) {
 
 func TestChannelNoConsumer(t *testing.T) {
 	ch := New()
-	defer ch.Close()
 
 	var sum int32
 	go func() {

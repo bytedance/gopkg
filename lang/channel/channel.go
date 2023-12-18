@@ -26,9 +26,6 @@ const (
 	defaultSize           = 0
 )
 
-// terminalSig is special item to define system message
-var terminalSig interface{} = struct{}{}
-
 type item struct {
 	value    interface{}
 	deadline time.Time
@@ -208,19 +205,13 @@ func (c *channel) Close() {
 	if !atomic.CompareAndSwapInt32(&c.state, 0, -1) {
 		return
 	}
-	// empty buffer
+	// stop producer
+	close(c.producer)
+	// stop consumer
 	c.bufferLock.Lock()
-	c.buffer.Init() // clear
+	c.buffer.Init() // clear buffer
 	c.bufferLock.Unlock()
 	c.bufferCond.Broadcast()
-	select {
-	case c.producer <- terminalSig:
-	default:
-		// producer channel is full, so create a new goroutine to send terminal msg asynchronously
-		go func() {
-			c.producer <- terminalSig
-		}()
-	}
 }
 
 func (c *channel) isClosed() bool {
@@ -258,7 +249,10 @@ func (c *channel) produce() {
 	for p := range c.producer {
 		// only check throttle function in blocking mode
 		if !c.nonblock {
-			c.throttling(c.producerThrottle)
+			if c.throttling(c.producerThrottle) {
+				// closed
+				return
+			}
 		}
 
 		// produced
@@ -273,16 +267,11 @@ func (c *channel) produce() {
 		c.enqueueBuffer(it)
 		c.bufferCond.Signal()
 		if !c.nonblock {
-			for c.buffer.Len() >= capacity {
+			for c.buffer.Len() >= capacity && !c.isClosed() {
 				c.bufferCond.Wait()
 			}
 		}
 		c.bufferLock.Unlock()
-
-		if p == terminalSig { // graceful shutdown
-			close(c.producer)
-			return
-		}
 	}
 }
 
@@ -290,11 +279,20 @@ func (c *channel) produce() {
 func (c *channel) consume() {
 	for {
 		// check throttle
-		c.throttling(c.consumerThrottle)
+		if c.throttling(c.consumerThrottle) {
+			// closed
+			return
+		}
 
 		// dequeue buffer
 		c.bufferLock.Lock()
 		for c.buffer.Len() == 0 {
+			if c.isClosed() {
+				close(c.consumer)
+				atomic.StoreInt32(&c.state, -2) // -2 means closed totally
+				c.bufferLock.Unlock()
+				return
+			}
 			c.bufferCond.Wait()
 		}
 		it, ok := c.dequeueBuffer()
@@ -303,14 +301,6 @@ func (c *channel) consume() {
 		if !ok {
 			// in fact, this case will never happen
 			continue
-		}
-
-		// graceful shutdown
-		if it.value == terminalSig {
-			atomic.AddUint64(&c.consumed, 1)
-			close(c.consumer)
-			atomic.StoreInt32(&c.state, -2)
-			return
 		}
 
 		// check expired
@@ -327,7 +317,7 @@ func (c *channel) consume() {
 	}
 }
 
-func (c *channel) throttling(throttle Throttle) {
+func (c *channel) throttling(throttle Throttle) (closed bool) {
 	if throttle == nil {
 		return
 	}
@@ -338,10 +328,12 @@ func (c *channel) throttling(throttle Throttle) {
 	ticker := time.NewTicker(c.throttleWindow)
 	defer ticker.Stop()
 
-	for throttled && !c.isClosed() {
+	closed = c.isClosed()
+	for throttled && !closed {
 		<-ticker.C
-		throttled = throttle(c)
+		throttled, closed = throttle(c), c.isClosed()
 	}
+	return closed
 }
 
 func (c *channel) enqueueBuffer(it item) {
