@@ -36,7 +36,7 @@ type response struct {
 var taskPool Channel
 
 func Service1(req *request) {
-	taskPool.Input() <- req // async run
+	taskPool.Input(req)
 	return
 }
 
