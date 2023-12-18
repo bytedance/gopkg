@@ -16,7 +16,6 @@ package channel
 
 import (
 	"container/list"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -165,11 +164,6 @@ type Channel interface {
 	Close()
 }
 
-// channelWrapper use to detect user never hold the reference of channel object, and we need to close channel implicitly.
-type channelWrapper struct {
-	Channel
-}
-
 // channel implements a safe and feature-rich channel struct for the real world.
 type channel struct {
 	size             int
@@ -206,14 +200,7 @@ func New(opts ...Option) Channel {
 	c.buffer = list.New()
 	go c.produce()
 	go c.consume()
-
-	// register finalizer for wrapper of channel
-	cw := &channelWrapper{c}
-	runtime.SetFinalizer(cw, func(obj *channelWrapper) {
-		// it's ok to call Close again if user already closed the channel
-		obj.Close()
-	})
-	return cw
+	return c
 }
 
 // Close will close the producer and consumer goroutines gracefully
@@ -226,7 +213,14 @@ func (c *channel) Close() {
 	c.buffer.Init() // clear
 	c.bufferLock.Unlock()
 	c.bufferCond.Broadcast()
-	c.producer <- terminalSig
+	select {
+	case c.producer <- terminalSig:
+	default:
+		// producer channel is full, so create a new goroutine to send terminal msg asynchronously
+		go func() {
+			c.producer <- terminalSig
+		}()
+	}
 }
 
 func (c *channel) isClosed() bool {

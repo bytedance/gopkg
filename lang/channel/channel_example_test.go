@@ -52,6 +52,7 @@ func TestNetworkIsolationOrDownstreamBlock(t *testing.T) {
 		WithNonBlock(),
 		WithTimeout(time.Millisecond*10),
 	)
+	defer taskPool.Close()
 	var responded int32
 	go func() {
 		// task worker
@@ -93,6 +94,7 @@ func TestCPUHeavy(t *testing.T) {
 			return atomic.LoadInt32(&concurrency) > 10
 		}),
 	)
+	defer taskPool.Close()
 	var responded int32
 	go func() {
 		// task worker

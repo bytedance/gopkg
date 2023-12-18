@@ -62,6 +62,7 @@ func BenchmarkChannel(b *testing.B) {
 	for _, size := range benchSizes {
 		b.Run(fmt.Sprintf("Size-%d", size), func(b *testing.B) {
 			var ch Channel
+			defer ch.Close()
 			if size < 0 {
 				ch = New(WithNonBlock())
 			} else {
@@ -105,51 +106,24 @@ func TestChannelDefaultSize(t *testing.T) {
 
 func TestChannelClose(t *testing.T) {
 	beginGs := runtime.NumGoroutine()
-	channel := New()
+	ch := New()
 	afterGs := runtime.NumGoroutine()
 	assert.Equal(t, 2, afterGs-beginGs)
 	var exit int32
 	go func() {
-		for _ = range channel.Output() {
+		for _ = range ch.Output() {
 		}
 		atomic.AddInt32(&exit, 1)
 	}()
 	for i := 1; i <= 20; i++ {
-		channel.Input() <- i
+		ch.Input() <- i
 	}
-	channel.Close()
+	ch.Close()
 	for runtime.NumGoroutine() > beginGs {
 		runtime.Gosched()
 	}
-	<-channel.Output() // never block
+	<-ch.Output() // never block
 	assert.Equal(t, int32(1), atomic.LoadInt32(&exit))
-}
-
-func TestChannelGCClose(t *testing.T) {
-	// close implicitly
-	go func() {
-		_ = New()
-	}()
-	go func() {
-		ch := New()
-		ch.Input() <- 1
-		_ = <-ch.Output()
-		tlogf(t, "channel finished")
-	}()
-	for i := 0; i < 3; i++ {
-		time.Sleep(time.Millisecond * 10)
-		runtime.GC()
-	}
-
-	// close explicitly
-	go func() {
-		ch := New()
-		ch.Close()
-	}()
-	for i := 0; i < 3; i++ {
-		time.Sleep(time.Millisecond * 10)
-		runtime.GC()
-	}
 }
 
 func TestChannelTimeout(t *testing.T) {
@@ -157,6 +131,8 @@ func TestChannelTimeout(t *testing.T) {
 		WithTimeout(time.Millisecond*50),
 		WithSize(1024),
 	)
+	defer ch.Close()
+
 	go func() {
 		for i := 1; i <= 20; i++ {
 			ch.Input() <- i
@@ -187,6 +163,8 @@ func TestChannelConsumerInflightLimit(t *testing.T) {
 			return atomic.LoadInt32(&inflight) >= limit
 		}),
 	)
+	defer ch.Close()
+
 	var wg sync.WaitGroup
 	go func() {
 		for c := range ch.Output() {
@@ -218,6 +196,8 @@ func TestChannelConsumerInflightLimit(t *testing.T) {
 func TestChannelProducerSpeedLimit(t *testing.T) {
 	var total = 15
 	ch := New(WithSize(0))
+	defer ch.Close()
+
 	go func() {
 		for c := range ch.Output() {
 			id := c.(int)
@@ -239,6 +219,8 @@ func TestChannelProducerSpeedLimit(t *testing.T) {
 func TestChannelProducerNoLimit(t *testing.T) {
 	var total = 100
 	ch := New(WithSize(1000))
+	defer ch.Close()
+
 	go func() {
 		for c := range ch.Output() {
 			id := c.(int)
@@ -290,6 +272,8 @@ func TestChannelGoroutinesThrottle(t *testing.T) {
 
 func TestChannelNoConsumer(t *testing.T) {
 	ch := New()
+	defer ch.Close()
+
 	var sum int32
 	go func() {
 		for i := 1; i <= 20; i++ {
@@ -298,12 +282,13 @@ func TestChannelNoConsumer(t *testing.T) {
 			atomic.AddInt32(&sum, 1)
 		}
 	}()
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	assert.Equal(t, int32(2), atomic.LoadInt32(&sum))
 }
 
 func TestChannelOneSlowTask(t *testing.T) {
 	ch := New(WithTimeout(time.Millisecond*500), WithSize(0))
+	defer ch.Close()
 
 	var total int32
 	go func() {
@@ -326,48 +311,52 @@ func TestChannelOneSlowTask(t *testing.T) {
 
 func TestChannelProduceRateControl(t *testing.T) {
 	produceMaxRate := 100
-	channel := New(
+	ch := New(
 		WithRateThrottle(produceMaxRate, 0),
 	)
+	defer ch.Close()
 
 	go func() {
-		for c := range channel.Output() {
+		for c := range ch.Output() {
 			id := c.(int)
 			tlogf(t, "consumed: %d", id)
 		}
 	}()
 	begin := time.Now()
 	for i := 1; i <= 500; i++ {
-		channel.Input() <- i
+		ch.Input() <- i
 	}
 	cost := time.Now().Sub(begin)
 	tlogf(t, "Cost %dms", cost.Milliseconds())
 }
 
 func TestChannelConsumeRateControl(t *testing.T) {
-	channel := New(
+	ch := New(
 		WithRateThrottle(0, 100),
 	)
+	defer ch.Close()
 
 	go func() {
-		for c := range channel.Output() {
+		for c := range ch.Output() {
 			id := c.(int)
 			tlogf(t, "consumed: %d", id)
 		}
 	}()
 	begin := time.Now()
 	for i := 1; i <= 500; i++ {
-		channel.Input() <- i
+		ch.Input() <- i
 	}
 	cost := time.Now().Sub(begin)
 	tlogf(t, "Cost %dms", cost.Milliseconds())
 }
 
 func TestChannelNonBlock(t *testing.T) {
-	channel := New(WithNonBlock())
+	ch := New(WithNonBlock())
+	defer ch.Close()
+
 	begin := time.Now()
 	for i := 1; i <= 10000; i++ {
-		channel.Input() <- i
+		ch.Input() <- i
 		tlogf(t, "producer=%d finished", i)
 	}
 	cost := time.Now().Sub(begin)
@@ -397,19 +386,18 @@ func TestFastRecoverConsumer(t *testing.T) {
 	var consumed int32
 	var aborted int32
 	timeout := time.Second * 1
-
-	channel := New(
+	ch := New(
 		WithNonBlock(),
 		WithTimeout(timeout),
 		WithTimeoutCallback(func(i interface{}) {
 			atomic.AddInt32(&aborted, 1)
 		}),
 	)
-	defer channel.Close()
+	defer ch.Close()
 
 	// consumer
 	go func() {
-		for c := range channel.Output() {
+		for c := range ch.Output() {
 			id := c.(int)
 			t.Logf("consumed: %d", id)
 			time.Sleep(time.Millisecond * 100)
@@ -420,7 +408,7 @@ func TestFastRecoverConsumer(t *testing.T) {
 	// producer
 	// faster than consumer's ability
 	for i := 1; i <= 20; i++ {
-		channel.Input() <- i
+		ch.Input() <- i
 		time.Sleep(time.Millisecond * 10)
 	}
 	for (atomic.LoadInt32(&consumed) + atomic.LoadInt32(&aborted)) != 20 {
@@ -431,7 +419,7 @@ func TestFastRecoverConsumer(t *testing.T) {
 	aborted = 0
 	// quick recover consumer
 	for i := 1; i <= 10; i++ {
-		channel.Input() <- i
+		ch.Input() <- i
 		time.Sleep(time.Millisecond * 10)
 	}
 	for atomic.LoadInt32(&consumed) != 10 {
