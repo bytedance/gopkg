@@ -134,6 +134,7 @@ type scqNodePointer struct {
 }
 
 func (q *pointerSCQ) Enqueue(data unsafe.Pointer) bool {
+	atomic.LoadPointer(&data) // move data escape to heap
 	for {
 		// Increment the TAIL, try to occupy an entry.
 		tailvalue := atomic.AddUint64(&q.tail, 1)

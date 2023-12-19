@@ -34,6 +34,40 @@ func TestWithValue(t *testing.T) {
 	assert(t, x == v)
 }
 
+func TestWithValues(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key-0", "Value-0"
+	ctx = metainfo.WithValue(ctx, k, v)
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 0; i <= 3; i++ {
+		x, ok := metainfo.GetValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
+func TestWithPersistValues(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key-0", "Value-0"
+	ctx = metainfo.WithPersistentValue(ctx, k, v)
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 0; i <= 3; i++ {
+		x, ok := metainfo.GetPersistentValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
 func TestWithEmpty(t *testing.T) {
 	ctx := context.Background()
 
@@ -80,6 +114,29 @@ func TestGetAll(t *testing.T) {
 	}
 
 	m := metainfo.GetAllValues(ctx)
+	assert(t, m != nil)
+	assert(t, len(m) == len(ss))
+
+	for _, k := range ss {
+		assert(t, m["key"+k] == "val"+k)
+	}
+}
+
+func TestRangeValues(t *testing.T) {
+	ctx := context.Background()
+
+	ss := []string{"1", "2", "3"}
+	for _, k := range ss {
+		ctx = metainfo.WithValue(ctx, "key"+k, "val"+k)
+	}
+
+	m := make(map[string]string, 3)
+	f := func(k, v string) bool {
+		m[k] = v
+		return true
+	}
+
+	metainfo.RangeValues(ctx, f)
 	assert(t, m != nil)
 	assert(t, len(m) == len(ss))
 
@@ -143,6 +200,49 @@ func TestWithPersistentEmpty(t *testing.T) {
 	assert(t, !ok)
 }
 
+func TestWithPersistentValues(t *testing.T) {
+	ctx := context.Background()
+
+	kvs := []string{"Key-1", "Value-1", "Key-2", "Value-2", "Key-3", "Value-3"}
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	for i := 1; i <= 3; i++ {
+		x, ok := metainfo.GetPersistentValue(ctx, fmt.Sprintf("Key-%d", i))
+		assert(t, ok)
+		assert(t, x == fmt.Sprintf("Value-%d", i))
+	}
+}
+
+func TestWithPersistentValuesEmpty(t *testing.T) {
+	ctx := context.Background()
+
+	k, v := "Key", "Value"
+	kvs := []string{"", v, k, ""}
+
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	_, ok := metainfo.GetPersistentValue(ctx, k)
+	assert(t, !ok)
+
+	_, ok = metainfo.GetPersistentValue(ctx, "")
+	assert(t, !ok)
+}
+
+func TestWithPersistentValuesRepeat(t *testing.T) {
+	ctx := context.Background()
+
+	kvs := []string{"Key", "Value-1", "Key", "Value-2", "Key", "Value-3"}
+
+	ctx = metainfo.WithPersistentValues(ctx, kvs...)
+	assert(t, ctx != nil)
+
+	x, ok := metainfo.GetPersistentValue(ctx, "Key")
+	assert(t, ok)
+	assert(t, x == "Value-3")
+}
+
 func TestDelPersistentValue(t *testing.T) {
 	ctx := context.Background()
 
@@ -172,6 +272,29 @@ func TestGetAllPersistent(t *testing.T) {
 	}
 
 	m := metainfo.GetAllPersistentValues(ctx)
+	assert(t, m != nil)
+	assert(t, len(m) == len(ss))
+
+	for _, k := range ss {
+		assert(t, m["key"+k] == "val"+k)
+	}
+}
+
+func TestRangePersistent(t *testing.T) {
+	ctx := context.Background()
+
+	ss := []string{"1", "2", "3"}
+	for _, k := range ss {
+		ctx = metainfo.WithPersistentValue(ctx, "key"+k, "val"+k)
+	}
+
+	m := make(map[string]string, 3)
+	f := func(k, v string) bool {
+		m[k] = v
+		return true
+	}
+
+	metainfo.RangePersistentValues(ctx, f)
 	assert(t, m != nil)
 	assert(t, len(m) == len(ss))
 
@@ -293,6 +416,21 @@ func TestTransferForward(t *testing.T) {
 	assert(t, z == "tb")
 }
 
+func TestOverride(t *testing.T) {
+	ctx := context.Background()
+	ctx = metainfo.WithValue(ctx, "base", "base")
+	ctx = metainfo.WithValue(ctx, "base2", "base")
+	ctx = metainfo.WithValue(ctx, "base3", "base")
+
+	ctx1 := metainfo.WithValue(ctx, "a", "a")
+	ctx2 := metainfo.WithValue(ctx, "b", "b")
+
+	av, ae := metainfo.GetValue(ctx1, "a")
+	bv, be := metainfo.GetValue(ctx2, "b")
+	assert(t, ae && av == "a", ae, av)
+	assert(t, be && bv == "b", be, bv)
+}
+
 ///////////////////////////////////////////////
 
 func initMetaInfo(count int) (context.Context, []string, []string) {
@@ -329,11 +467,25 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.GetAllValues(ctx)
 		}
+	case "RangeValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			metainfo.RangeValues(ctx, func(_, _ string) bool {
+				return true
+			})
+		}
 	case "WithValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithValue(ctx, "key", "val")
+		}
+	case "WithValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.WithValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
 		}
 	case "WithValueAcc":
 		b.ReportAllocs()
@@ -359,11 +511,25 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.GetAllPersistentValues(ctx)
 		}
+	case "RangePersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			metainfo.RangePersistentValues(ctx, func(_, _ string) bool {
+				return true
+			})
+		}
 	case "WithPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.WithPersistentValue(ctx, "key", "val")
+		}
+	case "WithPersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.WithPersistentValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
 		}
 	case "WithPersistentValueAcc":
 		b.ReportAllocs()
@@ -426,12 +592,30 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.GetAllValues(ctx)
 			}
 		})
+	case "RangeValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				metainfo.RangeValues(ctx, func(_, _ string) bool {
+					return true
+				})
+			}
+		})
 	case "WithValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				_ = metainfo.WithValue(ctx, "key", "val")
+			}
+		})
+	case "WithValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = metainfo.WithValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
 			}
 		})
 	case "WithValueAcc":
@@ -471,12 +655,30 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 				_ = metainfo.GetAllPersistentValues(ctx)
 			}
 		})
+	case "RangePersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				metainfo.RangePersistentValues(ctx, func(_, _ string) bool {
+					return true
+				})
+			}
+		})
 	case "WithPersistentValue":
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				_ = metainfo.WithPersistentValue(ctx, "key", "val")
+			}
+		})
+	case "WithPersistentValues":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = metainfo.WithPersistentValues(ctx, "key--1", "val--1", "key--2", "val--2", "key--3", "val--3")
 			}
 		})
 	case "WithPersistentValueAcc":
@@ -527,11 +729,14 @@ func BenchmarkAll(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValues",
 		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
 		"GetAllPersistentValues",
+		"RangePersistentValues",
 		"WithPersistentValue",
+		"WithPersistentValues",
 		"WithPersistentValueAcc",
 		"DelPersistentValue",
 		"SaveMetaInfoToMap",
@@ -551,10 +756,13 @@ func BenchmarkAllParallel(b *testing.B) {
 		"GetValue",
 		"GetAllValues",
 		"WithValue",
+		"WithValues",
 		"WithValueAcc",
 		"DelValue",
 		"GetPersistentValue",
+		"GetPersistentValues",
 		"GetAllPersistentValues",
+		"RangePersistentValues",
 		"WithPersistentValue",
 		"WithPersistentValueAcc",
 		"DelPersistentValue",
@@ -566,5 +774,87 @@ func BenchmarkAllParallel(b *testing.B) {
 			fun := fmt.Sprintf("%s_%d", api, cnt)
 			b.Run(fun, func(b *testing.B) { benchmarkParallel(b, api, cnt) })
 		}
+	}
+}
+
+func TestValuesCount(t *testing.T) {
+	ctx := context.Background()
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				ctx: ctx,
+			},
+			want: 0,
+		},
+		{
+			name: "0",
+			args: args{
+				ctx: metainfo.WithPersistentValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 0,
+		},
+		{
+			name: "2",
+			args: args{
+				ctx: metainfo.WithValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metainfo.CountValues(tt.args.ctx); got != tt.want {
+				t.Errorf("ValuesCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPersistentValuesCount(t *testing.T) {
+	ctx := context.Background()
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				ctx: ctx,
+			},
+			want: 0,
+		},
+		{
+			name: "0",
+			args: args{
+				ctx: metainfo.WithValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 0,
+		},
+		{
+			name: "2",
+			args: args{
+				ctx: metainfo.WithPersistentValues(ctx, "1", "1", "2", "2"),
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metainfo.CountPersistentValues(tt.args.ctx); got != tt.want {
+				t.Errorf("ValuesCount() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

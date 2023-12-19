@@ -22,9 +22,9 @@ import (
 	"sync/atomic"
 )
 
-const (
-	MaxGCPercent uint32 = 500
-	MinGCPercent uint32 = 50
+var (
+	maxGCPercent uint32 = 500
+	minGCPercent uint32 = 50
 )
 
 var defaultGCPercent uint32 = 100
@@ -62,6 +62,26 @@ func GetGCPercent() uint32 {
 		return defaultGCPercent
 	}
 	return globalTuner.getGCPercent()
+}
+
+// GetMaxGCPercent returns the max gc percent value.
+func GetMaxGCPercent() uint32 {
+	return atomic.LoadUint32(&maxGCPercent)
+}
+
+// SetMaxGCPercent sets the new max gc percent value.
+func SetMaxGCPercent(n uint32) uint32 {
+	return atomic.SwapUint32(&maxGCPercent, n)
+}
+
+// GetMinGCPercent returns the min gc percent value.
+func GetMinGCPercent() uint32 {
+	return atomic.LoadUint32(&minGCPercent)
+}
+
+// SetMinGCPercent sets the new min gc percent value.
+func SetMinGCPercent(n uint32) uint32 {
+	return atomic.SwapUint32(&minGCPercent, n)
 }
 
 // only allow one gc tuner in one process
@@ -111,13 +131,13 @@ func calcGCPercent(inuse, threshold uint64) uint32 {
 	}
 	// inuse heap larger than threshold, use min percent
 	if threshold <= inuse {
-		return MinGCPercent
+		return minGCPercent
 	}
 	gcPercent := uint32(math.Floor(float64(threshold-inuse) / float64(inuse) * 100))
-	if gcPercent < MinGCPercent {
-		return MinGCPercent
-	} else if gcPercent > MaxGCPercent {
-		return MaxGCPercent
+	if gcPercent < minGCPercent {
+		return minGCPercent
+	} else if gcPercent > maxGCPercent {
+		return maxGCPercent
 	}
 	return gcPercent
 }
