@@ -189,3 +189,12 @@ func withNode(ctx context.Context, n *node) context.Context {
 	}
 	return context.WithValue(ctx, ctxKey, n)
 }
+
+func copyNode(dst, src *node) {
+	dst.transient = make([]kv, len(src.transient))
+	dst.stale = make([]kv, len(src.stale))
+	dst.persistent = make([]kv, len(src.persistent))
+	copy(dst.transient, src.transient)
+	copy(dst.stale, src.stale)
+	copy(dst.persistent, src.persistent)
+}

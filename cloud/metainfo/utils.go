@@ -36,11 +36,9 @@ func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Contex
 		return ctx
 	}
 
-	var mv *mapView
+	n := &node{}
 	if x := getNode(ctx); x != nil {
-		mv = x.mapView()
-	} else {
-		mv = newMapView()
+		copyNode(n, x)
 	}
 
 	for k, v := range m {
@@ -51,25 +49,43 @@ func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Contex
 		switch {
 		case strings.HasPrefix(k, PrefixTransientUpstream):
 			if len(k) > lenPTU { // do not move this condition to the case statement to prevent a PTU matches PT
-				mv.stale[k[lenPTU:]] = v
+				if idx, ok := search(n.stale, k[lenPTU:]); ok {
+					if n.stale[idx].val != v {
+						n.stale[idx].val = v
+					}
+				} else {
+					n.stale = append(n.stale, kv{k[lenPTU:], v})
+				}
 			}
 		case strings.HasPrefix(k, PrefixTransient):
 			if len(k) > lenPT {
-				mv.transient[k[lenPT:]] = v
+				if idx, ok := search(n.transient, k[lenPT:]); ok {
+					if n.transient[idx].val != v {
+						n.transient[idx].val = v
+					}
+				} else {
+					n.transient = append(n.transient, kv{k[lenPT:], v})
+				}
 			}
 		case strings.HasPrefix(k, PrefixPersistent):
 			if len(k) > lenPP {
-				mv.persistent[k[lenPP:]] = v
+				if idx, ok := search(n.persistent, k[lenPP:]); ok {
+					if n.persistent[idx].val != v {
+						n.persistent[idx].val = v
+					}
+				} else {
+					n.persistent = append(n.persistent, kv{k[lenPP:], v})
+				}
 			}
 		}
 	}
 
-	if mv.size() == 0 {
-		// TODO: remove this?
+	if n.size() == 0 {
+		//TODO: remove this?
 		return ctx
 	}
 
-	return withNode(ctx, mv.toNode())
+	return withNode(ctx, n)
 }
 
 // SaveMetaInfoToMap set key-value pairs from ctx to m while filtering out transient-upstream data.
