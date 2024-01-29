@@ -87,7 +87,7 @@ func TestFromHTTPHeaderKeepPreviousData(t *testing.T) {
 	c1 := metainfo.FromHTTPHeader(c0, metainfo.HTTPHeader(h))
 	assert(t, c0 != c1)
 	vs := metainfo.GetAllValues(c1)
-	assert(t, len(vs) == 3)
+	assert(t, len(vs) == 3, len(vs))
 	assert(t, vs["tk"] == "tv" && vs["uk"] == "uv" && vs["XK"] == "xv")
 	vs = metainfo.GetAllPersistentValues(c1)
 	assert(t, len(vs) == 3)

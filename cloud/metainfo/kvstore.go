@@ -31,11 +31,8 @@ func newKVStore(size ...int) kvstore {
 	return kvs.(kvstore)
 }
 
-func (store kvstore) toList(kvs []kv) []kv {
-	for k, v := range store {
-		kvs = append(kvs, kv{key: k, val: v})
-	}
-	return kvs
+func (store kvstore) size() int {
+	return len(store)
 }
 
 func (store kvstore) recycle() {
