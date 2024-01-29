@@ -27,6 +27,33 @@ type kv struct {
 	val string
 }
 
+func newNodeFromMaps(persistent, transient, stale kvstore) *node {
+	ps, ts, sz := persistent.size(), transient.size(), stale.size()
+	// make slices together to reduce malloc cost
+	kvs := make([]kv, ps+ts+sz)
+	nd := new(node)
+	nd.persistent = kvs[:ps]
+	nd.transient = kvs[ps : ps+ts]
+	nd.stale = kvs[ps+ts:]
+
+	i := 0
+	for k, v := range persistent {
+		nd.persistent[i].key, nd.persistent[i].val = k, v
+		i++
+	}
+	i = 0
+	for k, v := range transient {
+		nd.transient[i].key, nd.transient[i].val = k, v
+		i++
+	}
+	i = 0
+	for k, v := range stale {
+		nd.stale[i].key, nd.stale[i].val = k, v
+		i++
+	}
+	return nd
+}
+
 type node struct {
 	persistent []kv
 	transient  []kv

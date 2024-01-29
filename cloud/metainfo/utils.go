@@ -31,29 +31,62 @@ func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Contex
 	if ctx == nil || len(m) == 0 {
 		return ctx
 	}
-	var persistent kvstore
-	var transient kvstore
-	var stale kvstore
 
-	// inherit from exist ctx node
-	mapSize := len(m)
 	nd := getNode(ctx)
-	inherit := nd != nil
-	if inherit {
-		// inherit from node
-		persistent = newKVStore(mapSize)
-		transient = newKVStore(mapSize)
-		stale = newKVStore(mapSize)
-		sliceToMap(nd.persistent, persistent)
-		sliceToMap(nd.transient, transient)
-		sliceToMap(nd.stale, stale)
-	} else {
-		// make new node
-		nd = &node{
-			persistent: make([]kv, 0, mapSize),
-			transient:  make([]kv, 0, mapSize),
-			stale:      make([]kv, 0, mapSize),
+	if nd == nil || nd.size() == 0 {
+		// fast path
+		return newCtxFromMap(ctx, m)
+	}
+	// inherit from node
+	mapSize := len(m)
+	persistent := newKVStore(mapSize)
+	transient := newKVStore(mapSize)
+	stale := newKVStore(mapSize)
+	sliceToMap(nd.persistent, persistent)
+	sliceToMap(nd.transient, transient)
+	sliceToMap(nd.stale, stale)
+
+	// insert new kvs from m to node
+	for k, v := range m {
+		if len(k) == 0 || len(v) == 0 {
+			continue
 		}
+		switch {
+		case strings.HasPrefix(k, PrefixTransientUpstream):
+			if len(k) > lenPTU { // do not move this condition to the case statement to prevent a PTU matches PT
+				stale[k[lenPTU:]] = v
+			}
+		case strings.HasPrefix(k, PrefixTransient):
+			if len(k) > lenPT {
+				transient[k[lenPT:]] = v
+			}
+		case strings.HasPrefix(k, PrefixPersistent):
+			if len(k) > lenPP {
+				persistent[k[lenPP:]] = v
+			}
+		}
+	}
+
+	// return original ctx if no invalid key in map
+	if (persistent.size() + transient.size() + stale.size()) == 0 {
+		return ctx
+	}
+
+	// make new node, and transfer map to list
+	nd = newNodeFromMaps(persistent, transient, stale)
+	persistent.recycle()
+	transient.recycle()
+	stale.recycle()
+	return withNode(ctx, nd)
+}
+
+func newCtxFromMap(ctx context.Context, m map[string]string) context.Context {
+	// make new node
+	mapSize := len(m)
+	nd := &node{
+		persistent: make([]kv, 0, mapSize),
+		transient:  make([]kv, 0, mapSize),
+		stale:      make([]kv, 0, mapSize),
 	}
 
 	// insert new kvs from m to node
@@ -64,45 +97,24 @@ func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Contex
 		switch {
 		case strings.HasPrefix(k, PrefixTransientUpstream):
 			if len(k) > lenPTU { // do not move this condition to the case statement to prevent a PTU matches PT
-				if inherit {
-					stale[k[lenPTU:]] = v
-				} else {
-					nd.stale = append(nd.stale, kv{key: k[lenPTU:], val: v})
-				}
+				nd.stale = append(nd.stale, kv{key: k[lenPTU:], val: v})
 			}
 		case strings.HasPrefix(k, PrefixTransient):
 			if len(k) > lenPT {
-				if inherit {
-					transient[k[lenPT:]] = v
-				} else {
-					nd.transient = append(nd.transient, kv{key: k[lenPT:], val: v})
-				}
+				nd.transient = append(nd.transient, kv{key: k[lenPT:], val: v})
 			}
 		case strings.HasPrefix(k, PrefixPersistent):
 			if len(k) > lenPP {
-				if inherit {
-					persistent[k[lenPP:]] = v
-				} else {
-					nd.persistent = append(nd.persistent, kv{key: k[lenPP:], val: v})
-				}
+				nd.persistent = append(nd.persistent, kv{key: k[lenPP:], val: v})
 			}
 		}
 	}
 
-	if nd.size() == 0 { // return original ctx if no invalid key in map
+	// return original ctx if no invalid key in map
+	if nd.size() == 0 {
 		return ctx
 	}
-	// transfer map to list
-	if inherit {
-		nd.stale = stale.toList(nd.stale)
-		nd.transient = transient.toList(nd.transient)
-		nd.persistent = persistent.toList(nd.persistent)
-		stale.recycle()
-		transient.recycle()
-		persistent.recycle()
-	}
-	ctx = withNode(ctx, nd)
-	return ctx
+	return withNode(ctx, nd)
 }
 
 // SaveMetaInfoToMap set key-value pairs from ctx to m while filtering out transient-upstream data.
@@ -126,20 +138,10 @@ func SaveMetaInfoToMap(ctx context.Context, m map[string]string) {
 
 // sliceToMap converts a kv slice to map.
 func sliceToMap(slice []kv, kvs kvstore) {
+	if len(slice) == 0 {
+		return
+	}
 	for _, kv := range slice {
 		kvs[kv.key] = kv.val
 	}
-}
-
-// mapToSlice converts a map to a kv slice. If the map is empty, the return value will be nil.
-func mapToSlice(kvs kvstore) (slice []kv) {
-	size := len(kvs)
-	if size == 0 {
-		return
-	}
-	slice = make([]kv, 0, size)
-	for k, v := range kvs {
-		slice = append(slice, kv{key: k, val: v})
-	}
-	return
 }

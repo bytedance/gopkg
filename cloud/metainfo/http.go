@@ -76,63 +76,73 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 	if ctx == nil || h == nil {
 		return ctx
 	}
-	var persistent kvstore
-	var transient kvstore
-
-	// inherit from exist ctx node
 	nd := getNode(ctx)
-	inherit := nd != nil
-	if inherit {
-		// inherit from node
-		persistent = newKVStore()
-		transient = newKVStore()
-		sliceToMap(nd.persistent, persistent)
-		sliceToMap(nd.transient, transient)
-	} else {
-		// make new node
-		nd = &node{
-			persistent: make([]kv, 0, 16), // 32B * 16 = 512B
-			transient:  make([]kv, 0, 16),
-			stale:      make([]kv, 0, 16),
-		}
+	if nd == nil || nd.size() == 0 {
+		return newCtxFromHTTPHeader(ctx, h)
 	}
 
+	// inherit from exist ctx node
+	persistent := newKVStore()
+	transient := newKVStore()
+	sliceToMap(nd.persistent, persistent)
+	sliceToMap(nd.transient, transient)
+
+	// insert new kvs from http header
+	h.Visit(func(k, v string) {
+		if len(v) == 0 {
+			return
+		}
+		kk := strings.ToLower(k)
+		ln := len(kk)
+		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
+			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
+			transient[kk] = v
+		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
+			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
+			persistent[kk] = v
+		}
+	})
+
+	// return original ctx if no invalid key in http header
+	if (persistent.size() + transient.size()) == 0 {
+		return ctx
+	}
+
+	// make new kvs
+	nd = newNodeFromMaps(persistent, transient, nil)
+	persistent.recycle()
+	transient.recycle()
+	ctx = withNode(ctx, nd)
+	return ctx
+}
+
+func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
+	nd := &node{
+		persistent: make([]kv, 0, 16), // 32B * 16 = 512B
+		transient:  make([]kv, 0, 16),
+		stale:      []kv{},
+	}
 	// insert new kvs from http header to node
 	h.Visit(func(k, v string) {
 		if len(v) == 0 {
 			return
 		}
-
 		kk := strings.ToLower(k)
 		ln := len(kk)
 		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
 			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
-			if inherit {
-				transient[kk] = v
-			} else {
-				nd.transient = append(nd.transient, kv{key: kk, val: v})
-			}
+			nd.transient = append(nd.transient, kv{key: kk, val: v})
 		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
 			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
-			if inherit {
-				persistent[kk] = v
-			} else {
-				nd.persistent = append(nd.persistent, kv{key: kk, val: v})
-			}
+			nd.persistent = append(nd.persistent, kv{key: kk, val: v})
 		}
 	})
 
-	if nd.size() == 0 { // return original ctx if no invalid key in map
+	// return original ctx if no invalid key in http header
+	if nd.size() == 0 {
 		return ctx
 	}
-	if inherit {
-		nd.transient = transient.toList(nd.transient)
-		nd.persistent = persistent.toList(nd.persistent)
-		transient.recycle()
-		persistent.recycle()
-	}
-	ctx = withNode(ctx, nd)
-	return ctx
+	return withNode(ctx, nd)
 }
 
 // ToHTTPHeader writes all metainfo into the given HTTP header.
