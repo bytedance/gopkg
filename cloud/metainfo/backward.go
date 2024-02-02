@@ -181,6 +181,15 @@ func SendBackwardValuesFromMap(ctx context.Context, kvs map[string]string) (ok b
 	return
 }
 
+// GetBackwardValueToSend gets a value associated with the given key that is set by
+// `SendBackwardValue`, `SendBackwardValues` or `SendBackwardValuesFromMap`.
+func GetBackwardValueToSend(ctx context.Context, key string) (val string, ok bool) {
+	if p, exist := ctx.Value(bwCtxKeySend).(*bwCtxValue); exist {
+		val, ok = p.get(key)
+	}
+	return
+}
+
 // AllBackwardValuesToSend retrieves all key-values pairs set by `SendBackwardValue`
 // or `SendBackwardValues` from the given context.
 // This function is designed for frameworks, common developers should not use it.
