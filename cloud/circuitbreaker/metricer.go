@@ -116,27 +116,29 @@ func (w *window) Succeed() {
 
 // Fail records a failure in the current perPBucket.
 func (w *window) Fail() {
-	w.rw.Lock()
+	rwx := w.rw.RLocker()
+	rwx.Lock()
 	b := w.getBucket()
 	atomic.AddInt64(&w.conseErr, 1)
 	atomic.AddInt64(&w.allFailure, 1)
 	if atomic.LoadInt64(&w.errStart) == 0 {
 		atomic.StoreInt64(&w.errStart, time.Now().UnixNano())
 	}
-	w.rw.Unlock()
+	rwx.Unlock()
 	b.Fail()
 }
 
 // Timeout records a timeout in the current perPBucket
 func (w *window) Timeout() {
-	w.rw.Lock()
+	rwx := w.rw.RLocker()
+	rwx.Lock()
 	b := w.getBucket()
 	atomic.AddInt64(&w.conseErr, 1)
 	atomic.AddInt64(&w.allTimeout, 1)
 	if atomic.LoadInt64(&w.errStart) == 0 {
 		atomic.StoreInt64(&w.errStart, time.Now().UnixNano())
 	}
-	w.rw.Unlock()
+	rwx.Unlock()
 	b.Timeout()
 }
 
