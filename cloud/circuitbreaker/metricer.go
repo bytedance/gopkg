@@ -121,9 +121,7 @@ func (w *window) Fail() {
 	b := w.getBucket()
 	atomic.AddInt64(&w.conseErr, 1)
 	atomic.AddInt64(&w.allFailure, 1)
-	if atomic.LoadInt64(&w.errStart) == 0 {
-		atomic.StoreInt64(&w.errStart, time.Now().UnixNano())
-	}
+	atomic.CompareAndSwapInt64(&w.errStart, 0, time.Now().UnixNano())
 	rwx.Unlock()
 	b.Fail()
 }
@@ -135,9 +133,7 @@ func (w *window) Timeout() {
 	b := w.getBucket()
 	atomic.AddInt64(&w.conseErr, 1)
 	atomic.AddInt64(&w.allTimeout, 1)
-	if atomic.LoadInt64(&w.errStart) == 0 {
-		atomic.StoreInt64(&w.errStart, time.Now().UnixNano())
-	}
+	atomic.CompareAndSwapInt64(&w.errStart, 0, time.Now().UnixNano())
 	rwx.Unlock()
 	b.Timeout()
 }
