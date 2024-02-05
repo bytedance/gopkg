@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: self-hosted
+    if: github.repository == 'bytedance/gopkg'
     steps:
       - uses: actions/checkout@v2
 
