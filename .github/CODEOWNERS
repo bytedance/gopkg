@@ -19,6 +19,7 @@
 /lang/mcache @PureWhiteWu @zhangyunhao116
 /lang/syncx @PureWhiteWu @zhangyunhao116
 /lang/stringx @kaka19ace
+/lang/channel @joway
 
 # util code owners
 /util/gopool @PureWhiteWu @zhangyunhao116

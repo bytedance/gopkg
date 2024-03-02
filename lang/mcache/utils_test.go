@@ -12,16 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "textflag.h"
+package mcache
 
-// func lzcnt(x int) int
-TEXT ·lzcnt(SB), NOSPLIT, $0-16
-    LZCNTQ x+0(FP), AX
-    MOVQ AX, ret+8(FP)
-    RET
+import (
+	"testing"
 
-// func bsr(x int) int
-TEXT ·bsr(SB), NOSPLIT, $0-16
-    BSRQ x+0(FP), AX
-    MOVQ AX, ret+8(FP)
-    RET
+	"github.com/stretchr/testify/assert"
+)
+
+func TestBsr(t *testing.T) {
+	assert.Equal(t, bsr(4), 2)
+	assert.Equal(t, bsr(24), 4)
+	assert.Equal(t, bsr((1<<10)-1), 9)
+	assert.Equal(t, bsr((1<<30)+(1<<19)+(1<<16)+(1<<1)), 30)
+}
+
+func BenchmarkBsr(b *testing.B) {
+	num := (1 << 30) + (1 << 19) + (1 << 16) + (1 << 1)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = bsr(num + i)
+	}
+}

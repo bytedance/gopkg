@@ -73,6 +73,31 @@ func GetAllValues(ctx context.Context) (m map[string]string) {
 	return
 }
 
+// RangeValues calls f sequentially for each transient kv.
+// If f returns false, range stops the iteration.
+func RangeValues(ctx context.Context, f func(k, v string) bool) {
+	n := getNode(ctx)
+	if n == nil {
+		return
+	}
+
+	if cnt := len(n.stale) + len(n.transient); cnt == 0 {
+		return
+	}
+
+	for _, kv := range n.stale {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+
+	for _, kv := range n.transient {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+}
+
 // WithValue sets the value into the context by the given key.
 // This value will be propagated to the next service/endpoint through an RPC call.
 //
@@ -131,7 +156,22 @@ func GetAllPersistentValues(ctx context.Context) (m map[string]string) {
 	return
 }
 
-// WithPersistentValue sets the value info the context by the given key.
+// RangePersistentValues calls f sequentially for each persistent kv.
+// If f returns false, range stops the iteration.
+func RangePersistentValues(ctx context.Context, f func(k, v string) bool) {
+	n := getNode(ctx)
+	if n == nil {
+		return
+	}
+
+	for _, kv := range n.persistent {
+		if !f(kv.key, kv.val) {
+			break
+		}
+	}
+}
+
+// WithPersistentValue sets the value into the context by the given key.
 // This value will be propagated to the services along the RPC call chain.
 func WithPersistentValue(ctx context.Context, k, v string) context.Context {
 	if len(k) == 0 || len(v) == 0 {
@@ -161,4 +201,129 @@ func DelPersistentValue(ctx context.Context, k string) context.Context {
 		}
 	}
 	return ctx
+}
+
+func getKey(kvs []string, i int) string {
+	return kvs[i*2]
+}
+
+func getValue(kvs []string, i int) string {
+	return kvs[i*2+1]
+}
+
+// CountPersistentValues counts the length of persisten KV pairs
+func CountPersistentValues(ctx context.Context) int {
+	if n := getNode(ctx); n == nil {
+		return 0
+	} else {
+		return len(n.persistent)
+	}
+}
+
+// CountValues counts the length of transient KV pairs
+func CountValues(ctx context.Context) int {
+	if n := getNode(ctx); n == nil {
+		return 0
+	} else {
+		return len(n.stale) + len(n.transient)
+	}
+}
+
+// WithPersistentValues sets the values into the context by the given keys.
+// This value will be propagated to the services along the RPC call chain.
+func WithPersistentValues(ctx context.Context, kvs ...string) context.Context {
+	if len(kvs)%2 != 0 {
+		panic("len(kvs) must be even")
+	}
+
+	kvLen := len(kvs) / 2
+
+	if ctx == nil || len(kvs) == 0 {
+		return ctx
+	}
+
+	var n *node
+	if m := getNode(ctx); m != nil {
+		nn := *m
+		n = &nn
+		n.persistent = make([]kv, len(m.persistent), len(m.persistent)+kvLen)
+		copy(n.persistent, m.persistent)
+	} else {
+		n = &node{
+			persistent: make([]kv, 0, kvLen),
+		}
+	}
+
+	for i := 0; i < kvLen; i++ {
+		key := getKey(kvs, i)
+		val := getValue(kvs, i)
+
+		if len(key) == 0 || len(val) == 0 {
+			continue
+		}
+
+		if idx, ok := search(n.persistent, key); ok {
+			if n.persistent[idx].val != val {
+				n.persistent[idx].val = val
+			}
+		} else {
+			n.persistent = append(n.persistent, kv{key: key, val: val})
+		}
+	}
+
+	return withNode(ctx, n)
+}
+
+// WithValue sets the values into the context by the given keys.
+// This value will be propagated to the next service/endpoint through an RPC call.
+//
+// Notice that it will not propagate any further beyond the next service/endpoint,
+// Use WithPersistentValues if you want to pass key/value pairs all the way.
+func WithValues(ctx context.Context, kvs ...string) context.Context {
+	if len(kvs)%2 != 0 {
+		panic("len(kvs) must be even")
+	}
+
+	kvLen := len(kvs) / 2
+
+	if ctx == nil || len(kvs) == 0 {
+		return ctx
+	}
+
+	var n *node
+	if m := getNode(ctx); m != nil {
+		nn := *m
+		n = &nn
+		n.transient = make([]kv, len(m.transient), len(m.transient)+kvLen)
+		copy(n.transient, m.transient)
+	} else {
+		n = &node{
+			transient: make([]kv, 0, kvLen),
+		}
+	}
+
+	for i := 0; i < kvLen; i++ {
+		key := getKey(kvs, i)
+		val := getValue(kvs, i)
+
+		if len(key) == 0 || len(val) == 0 {
+			continue
+		}
+
+		if res, ok := remove(n.stale, key); ok {
+			n.stale = res
+			n.transient = append(n.transient, kv{key: key, val: val})
+			continue
+		}
+
+		if idx, ok := search(n.transient, key); ok {
+			if n.transient[idx].val != val {
+				n.transient[idx].val = val
+			}
+		} else {
+			n.transient = append(n.transient, kv{key: key, val: val})
+		}
+	}
+
+	return withNode(ctx, n)
 }

@@ -15,12 +15,15 @@
 package gctuner
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMem(t *testing.T) {
+	defer runtime.GC() // make it will not affect other tests
+
 	is := assert.New(t)
 	const mb = 1024 * 1024
 

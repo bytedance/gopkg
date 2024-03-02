@@ -16,15 +16,14 @@
 package fastrand
 
 import (
+	"math/bits"
 	"unsafe"
 
 	"github.com/bytedance/gopkg/internal/runtimex"
 )
 
 // Uint32 returns a pseudo-random 32-bit value as a uint32.
-func Uint32() uint32 {
-	return runtimex.Fastrand()
-}
+var Uint32 = runtimex.Fastrand
 
 // Uint64 returns a pseudo-random 64-bit value as a uint64.
 func Uint64() uint64 {
@@ -124,6 +123,33 @@ func Uint64n(n uint64) uint64 {
 	return Uint64() % n
 }
 
+// wyrand: https://github.com/wangyi-fudan/wyhash
+type wyrand uint64
+
+func _wymix(a, b uint64) uint64 {
+	hi, lo := bits.Mul64(a, b)
+	return hi ^ lo
+}
+
+func (r *wyrand) Uint64() uint64 {
+	*r += wyrand(0xa0761d6478bd642f)
+	return _wymix(uint64(*r), uint64(*r^wyrand(0xe7037ed1a0b428db)))
+}
+
+func (r *wyrand) Uint64n(n uint64) uint64 {
+	return r.Uint64() % n
+}
+
+func (r *wyrand) Uint32() uint32 {
+	return uint32(Uint64())
+}
+
+func (r *wyrand) Uint32n(n int) uint32 {
+	// This is similar to Uint32() % n, but faster.
+	// See https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+	return uint32(uint64(r.Uint32()) * uint64(n) >> 32)
+}
+
 // Read generates len(p) random bytes and writes them into p.
 // It always returns len(p) and a nil error.
 // It is safe for concurrent use.
@@ -133,33 +159,21 @@ func Read(p []byte) (int, error) {
 		return 0, nil
 	}
 
-	// Used for local XORSHIFT.
-	// Xorshift paper: https://www.jstatsoft.org/article/view/v008i14/xorshift.pdf
-	s0, s1 := Uint32(), Uint32()
+	r := wyrand(Uint32())
 
-	if l >= 4 {
+	if l >= 8 {
 		var i int
-		uint32p := *(*[]uint32)(unsafe.Pointer(&p))
-		for l >= 4 {
-			// Local XORSHIFT.
-			s1 ^= s1 << 17
-			s1 = s1 ^ s0 ^ s1>>7 ^ s0>>16
-			s0, s1 = s1, s0
-
-			uint32p[i] = s0 + s1
+		uint64p := *(*[]uint64)(unsafe.Pointer(&p))
+		for l >= 8 {
+			uint64p[i] = r.Uint64()
 			i++
-			l -= 4
+			l -= 8
 		}
 	}
 
 	if l > 0 {
-		// Local XORSHIFT.
-		s1 ^= s1 << 17
-		s1 = s1 ^ s0 ^ s1>>7 ^ s0>>16
-
-		r := s0 + s1
 		for l > 0 {
-			p[len(p)-l] = byte(r >> (l * 8))
+			p[len(p)-l] = byte(r.Uint64() >> (l * 8))
 			l--
 		}
 	}

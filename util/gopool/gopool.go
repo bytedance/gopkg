@@ -17,6 +17,7 @@ package gopool
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 )
 
@@ -26,7 +27,7 @@ var defaultPool Pool
 var poolMap sync.Map
 
 func init() {
-	defaultPool = NewPool("gopool.DefaultPool", 10000, NewConfig())
+	defaultPool = NewPool("gopool.DefaultPool", math.MaxInt32, NewConfig())
 }
 
 // Go is an alternative to the go keyword, which is able to recover panic.
@@ -50,6 +51,11 @@ func SetCap(cap int32) {
 // SetPanicHandler sets the panic handler for the global pool.
 func SetPanicHandler(f func(context.Context, interface{})) {
 	defaultPool.SetPanicHandler(f)
+}
+
+// WorkerCount returns the number of global default pool's running workers
+func WorkerCount() int32 {
+	return defaultPool.WorkerCount()
 }
 
 // RegisterPool registers a new pool to the global map.

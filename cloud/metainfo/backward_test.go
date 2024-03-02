@@ -152,6 +152,10 @@ func TestWithBackwardValues5(t *testing.T) {
 	ok = metainfo.SendBackwardValues(ctx3, "key", "send2", "key1")
 	assert(t, !ok)
 
+	val, ok = metainfo.GetBackwardValueToSend(ctx3, "key")
+	assert(t, ok)
+	assert(t, val == "send0")
+
 	m = metainfo.RecvAllBackwardValues(ctx3)
 	assert(t, len(m) == 2)
 	assert(t, m["key"] == "recv0" && m["key1"] == "recv1", m)

@@ -33,7 +33,7 @@ func StringToBytes(s string) (b []byte) {
 	return b
 }
 
-// BytesToString converts a string to a byte slice.
+// BytesToString converts a byte slice to a string.
 //
 // This is a shallow copy, means that the returned string reuse the
 // underlying array in byte slice, it's your responsibility to keep

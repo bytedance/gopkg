@@ -493,6 +493,32 @@ func TestFloat64SetRemoveRangeByRank(t *testing.T) {
 	assert.Equal(t, N, z.Len()+len(actualNs))
 }
 
+func TestFloat64SetRemoveRangeByScore(t *testing.T) {
+	const N = 1000
+	z := NewFloat64()
+	for i := 0; i < N; i++ {
+		z.Add(fastrand.Float64(), fmt.Sprint(i))
+	}
+
+	min, max := func(a, b float64) (float64, float64) {
+		if a < b {
+			return a, b
+		} else {
+			return b, a
+		}
+	}(fastrand.Float64(), fastrand.Float64())
+
+	expectNs := z.RangeByScore(min, max)
+	actualNs := z.RemoveRangeByScore(min, max)
+	assert.Equal(t, expectNs, actualNs)
+
+	// test whether removed
+	for _, n := range actualNs {
+		assert.False(t, z.Contains(n.Value))
+	}
+	assert.Equal(t, N, z.Len()+len(actualNs))
+}
+
 func TestFloat64SetRemoveRangeByScoreWithOpt(t *testing.T) {
 	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{})
 	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{true, true})

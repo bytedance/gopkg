@@ -15,13 +15,10 @@
 //go:build !amd64
 // +build !amd64
 
-package mcache
+package xxhash3
 
-func bsr(x int) int {
-	r := 0
-	for x != 0 {
-		x = x >> 1
-		r += 1
-	}
-	return r - 1
+import "unsafe"
+
+func accum(xacc *[8]uint64, xinput, xsecret unsafe.Pointer, l uintptr) {
+	accumScalar(xacc, xinput, xsecret, l)
 }
