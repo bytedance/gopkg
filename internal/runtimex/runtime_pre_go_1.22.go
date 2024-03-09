@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !go1.22
+// +build !go1.22
+
 package runtimex
 
 import (
