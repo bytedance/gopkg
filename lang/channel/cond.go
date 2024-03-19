@@ -25,7 +25,11 @@ type Cond interface {
 }
 
 func NewCond(opts ...CondOption) Cond {
-	return new(cond)
+	cd := new(cond)
+	for _, opt := range opts {
+		opt(cd)
+	}
+	return cd
 }
 
 type condSignal = chan struct{}

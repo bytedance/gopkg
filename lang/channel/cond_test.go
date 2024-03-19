@@ -43,6 +43,18 @@ func TestCond(t *testing.T) {
 	}
 }
 
+func TestCondTimeout(t *testing.T) {
+	cd := NewCond(WithCondTimeout(time.Millisecond * 200))
+	go func() {
+		time.Sleep(time.Millisecond * 500)
+		cd.Broadcast()
+	}()
+	begin := time.Now()
+	cd.Wait(context.Background())
+	cost := time.Since(begin)
+	t.Logf("cost=%dms", cost.Milliseconds())
+}
+
 func BenchmarkChanCond(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
