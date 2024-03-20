@@ -28,8 +28,8 @@ jobs:
       - name: Set output
         id: output
         run: |
-          echo '::set-output name=triggered::${{ github.event_name == 'pull_request' || steps.check-comment.outputs.triggered }}'
-          echo '::set-output name=pr_number::${{ github.event.pull_request.number || github.event.issue.number }}'
+          echo 'triggered=${{ github.event_name == 'pull_request' || steps.check-comment.outputs.triggered }}' >> "$GITHUB_OUTPUT"
+          echo 'pr_number=${{ github.event.pull_request.number || github.event.issue.number }}' >> "$GITHUB_OUTPUT"
 
   benchdiff:
     name: Performance regression check
@@ -59,12 +59,12 @@ jobs:
           # Fetch github default branch as baseline
           git fetch origin ${{ github.event.repository.default_branch }}:BENCHDIFF_BASE
           git checkout BENCHDIFF_BASE
-          echo "::set-output name=base::$(git rev-parse HEAD)"
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
           # Checkout HEAD of pull request and set its sha to step output
           git fetch origin pull/${{ needs.trigger.outputs.pr_number }}/head:BENCHDIFF_HEAD
           git checkout BENCHDIFF_HEAD
-          echo "::set-output name=head::$(git rev-parse HEAD)"
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
           set -x
           # Set modified packages to step output
@@ -80,7 +80,7 @@ jobs:
             # tr: join paths to one line, otherwise benchdiff cannot recognize it
             pkgs=$(echo "${pkgs}" | awk '{print "./" $0}' | tr '\n' ' ')
           fi
-          echo "::set-output name=pkgs::${pkgs}"
+          echo "pkgs=${pkgs}" >> "$GITHUB_OUTPUT"
       - name: Setup go
         uses: actions/setup-go@v2
         with:
