@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	_ Signal = (*sigal)(nil)
+	_ Signal = (*signal)(nil)
 )
 
 type Signal interface {
@@ -14,16 +14,16 @@ type Signal interface {
 	Wait(ctx context.Context) bool
 }
 
-type SignalOption func(c *sigal)
+type SignalOption func(c *signal)
 
 func WithSignalTimeout(timeout time.Duration) SignalOption {
-	return func(s *sigal) {
+	return func(s *signal) {
 		s.timeout = timeout
 	}
 }
 
 func NewSignal(opts ...SignalOption) Signal {
-	sg := new(sigal)
+	sg := new(signal)
 	for _, opt := range opts {
 		opt(sg)
 	}
@@ -31,12 +31,12 @@ func NewSignal(opts ...SignalOption) Signal {
 	return sg
 }
 
-type sigal struct {
+type signal struct {
 	trigger chan struct{}
 	timeout time.Duration
 }
 
-func (s *sigal) Signal() {
+func (s *signal) Signal() {
 	select {
 	case <-s.trigger:
 	default:
@@ -44,7 +44,7 @@ func (s *sigal) Signal() {
 	}
 }
 
-func (s *sigal) Wait(ctx context.Context) bool {
+func (s *signal) Wait(ctx context.Context) bool {
 	if s.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, s.timeout)
