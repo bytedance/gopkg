@@ -16,6 +16,7 @@ package metainfo_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/bytedance/gopkg/cloud/metainfo"
@@ -145,4 +146,17 @@ func TestSaveMetaInfoToMap(t *testing.T) {
 	assert(t, len(m) == 2)
 	assert(t, m[metainfo.PrefixTransient+"b"] == "b2")
 	assert(t, m[metainfo.PrefixPersistent+"b"] == "b3")
+}
+
+func BenchmarkSetMetaInfoFromMap(b *testing.B) {
+	ctx := metainfo.WithPersistentValue(context.Background(), "key", "val")
+	m := map[string]string{}
+	for i := 0; i < 32; i++ {
+		m[fmt.Sprintf("key-%d", i)] = fmt.Sprintf("val-%d", i)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = metainfo.SetMetaInfoFromMap(ctx, m)
+	}
 }
