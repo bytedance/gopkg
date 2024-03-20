@@ -35,6 +35,9 @@ func init() {
 	if err != nil {
 		return
 	}
+	if gogc <= 0 {
+		return
+	}
 	defaultGCPercent = uint32(gogc)
 }
 

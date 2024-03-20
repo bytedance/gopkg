@@ -51,10 +51,20 @@ if threshold > 2*inuse, so gcPercent > 100, and GC negatively to reduce GC times
 The recommended threshold is 70% of the memory limit.
 
 ```go
-
-// Get mem limit from the host machine or cgroup file.
+// Get mem limit from the host machine.
 limit := 4 * 1024 * 1024 * 1024
 threshold := limit * 0.7
+
+// Get mem limit from cgroup file.
+memstr, err := os.ReadFile("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+if err != nil {
+	// ...
+}
+memLimit, err := strconv.ParseInt(string(memstr), 10, 64)
+if err != nil {
+	// ...
+}
+threshold := memLimit * 0.7
 
 gctuner.Tuning(threshold)
 ```
