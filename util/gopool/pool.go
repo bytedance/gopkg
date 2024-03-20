@@ -143,8 +143,14 @@ func (p *pool) SetPanicHandler(f func(context.Context, interface{})) {
 	p.panicHandler = f
 }
 
+// WorkerCount get worker count
 func (p *pool) WorkerCount() int32 {
 	return atomic.LoadInt32(&p.workerCount)
+}
+
+// TaskCount get task count
+func (p *pool) TaskCount() int32 {
+	return atomic.LoadInt32(&p.taskCount)
 }
 
 func (p *pool) incWorkerCount() {
