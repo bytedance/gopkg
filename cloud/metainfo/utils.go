@@ -78,11 +78,16 @@ func SaveMetaInfoToMap(ctx context.Context, m map[string]string) {
 		return
 	}
 	ctx = TransferForward(ctx)
-	for k, v := range GetAllValues(ctx) {
-		m[PrefixTransient+k] = v
-	}
-	for k, v := range GetAllPersistentValues(ctx) {
-		m[PrefixPersistent+k] = v
+	if n := getNode(ctx); n != nil {
+		for _, kv := range n.stale {
+			m[PrefixTransient+kv.key] = kv.val
+		}
+		for _, kv := range n.transient {
+			m[PrefixTransient+kv.key] = kv.val
+		}
+		for _, kv := range n.persistent {
+			m[PrefixPersistent+kv.key] = kv.val
+		}
 	}
 }
 
