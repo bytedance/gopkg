@@ -15,6 +15,7 @@
 package gopool
 
 import (
+	"context"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -56,8 +57,31 @@ func TestPool(t *testing.T) {
 }
 
 func TestPoolPanic(t *testing.T) {
+	var (
+		calledTimes int
+		expectTimes int = 8
+	)
+	// initialize new pool and set panic handler
 	p := NewPool("test", 100, NewConfig())
-	p.Go(testPanicFunc)
+	p.SetPanicHandler(func(ctx context.Context, r interface{}) {
+		calledTimes++
+	})
+
+	// execute panic function concurrently to see if provided panic handler were called
+	var wg sync.WaitGroup
+	for i := 0; i < expectTimes; i++ {
+		wg.Add(1)
+		p.Go(func() {
+			defer wg.Done()
+			testPanicFunc()
+		})
+	}
+	wg.Wait()
+
+	// if panic was not recovered, or panic handler was not called accordingly, callTimes would not be equal to expectTimes
+	if calledTimes != expectTimes {
+		t.Errorf("panic handler executed wrong times, expectTimes=%d, actualTimes=%d", expectTimes, calledTimes)
+	}
 }
 
 func BenchmarkPool(b *testing.B) {
