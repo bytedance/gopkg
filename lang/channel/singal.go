@@ -16,7 +16,7 @@ type Signal interface {
 
 type SignalOption func(c *sigal)
 
-func WithSinalTimeout(timeout time.Duration) SignalOption {
+func WithSignalTimeout(timeout time.Duration) SignalOption {
 	return func(s *sigal) {
 		s.timeout = timeout
 	}

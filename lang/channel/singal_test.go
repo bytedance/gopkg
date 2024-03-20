@@ -35,7 +35,7 @@ func TestSignal(t *testing.T) {
 }
 
 func TestSignalTimeout(t *testing.T) {
-	sg := NewSignal(WithSinalTimeout(time.Millisecond * 200))
+	sg := NewSignal(WithSignalTimeout(time.Millisecond * 200))
 	go func() {
 		time.Sleep(time.Millisecond * 500)
 		sg.Signal()
