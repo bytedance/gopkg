@@ -14,7 +14,9 @@
 
 package metainfo
 
-import "context"
+import (
+	"context"
+)
 
 type ctxKeyType struct{}
 
@@ -23,6 +25,33 @@ var ctxKey ctxKeyType
 type kv struct {
 	key string
 	val string
+}
+
+func newNodeFromMaps(persistent, transient, stale kvstore) *node {
+	ps, ts, sz := persistent.size(), transient.size(), stale.size()
+	// make slices together to reduce malloc cost
+	kvs := make([]kv, ps+ts+sz)
+	nd := new(node)
+	nd.persistent = kvs[:ps]
+	nd.transient = kvs[ps : ps+ts]
+	nd.stale = kvs[ps+ts:]
+
+	i := 0
+	for k, v := range persistent {
+		nd.persistent[i].key, nd.persistent[i].val = k, v
+		i++
+	}
+	i = 0
+	for k, v := range transient {
+		nd.transient[i].key, nd.transient[i].val = k, v
+		i++
+	}
+	i = 0
+	for k, v := range stale {
+		nd.stale[i].key, nd.stale[i].val = k, v
+		i++
+	}
+	return nd
 }
 
 type node struct {
@@ -120,40 +149,6 @@ func (n *node) delPersistent(k string) (r *node) {
 		}
 	}
 	return n
-}
-
-type mapView struct {
-	persistent map[string]string
-	transient  map[string]string
-	stale      map[string]string
-}
-
-func newMapView() *mapView {
-	return &mapView{
-		persistent: make(map[string]string),
-		transient:  make(map[string]string),
-		stale:      make(map[string]string),
-	}
-}
-
-func (m *mapView) size() int {
-	return len(m.persistent) + len(m.transient) + len(m.stale)
-}
-
-func (m *mapView) toNode() *node {
-	return &node{
-		persistent: mapToSlice(m.persistent),
-		transient:  mapToSlice(m.transient),
-		stale:      mapToSlice(m.stale),
-	}
-}
-
-func (n *node) mapView() *mapView {
-	return &mapView{
-		persistent: sliceToMap(n.persistent),
-		transient:  sliceToMap(n.transient),
-		stale:      sliceToMap(n.stale),
-	}
 }
 
 func search(kvs []kv, key string) (idx int, ok bool) {
