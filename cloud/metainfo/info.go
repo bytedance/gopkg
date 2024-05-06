@@ -73,6 +73,28 @@ func GetAllValues(ctx context.Context) (m map[string]string) {
 	return
 }
 
+// GetValueToMap retrieves the value set into the context by the given key and set the value to the input map.
+// Only use this function when you want to get a small set of values instead of GetAllValues.
+// The logic of getting value follows GetAllValues, transient value has higher priority if key is same.
+func GetValueToMap(ctx context.Context, m map[string]string, keys ...string) {
+	if m == nil || len(keys) == 0 {
+		return
+	}
+	n := getNode(ctx)
+	if n == nil {
+		return
+	}
+	for _, k := range keys {
+		if idx, ok := search(n.transient, k); ok {
+			m[k] = n.transient[idx].val
+			continue
+		}
+		if idx, ok := search(n.stale, k); ok {
+			m[k] = n.stale[idx].val
+		}
+	}
+}
+
 // RangeValues calls f sequentially for each transient kv.
 // If f returns false, range stops the iteration.
 func RangeValues(ctx context.Context, f func(k, v string) bool) {
