@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bytedance/gopkg/internal/hack"
+	"github.com/bytedance/gopkg/lang/dirtmake"
 	"github.com/bytedance/gopkg/lang/fastrand"
 )
 
@@ -246,7 +247,7 @@ func Reverse(s string) (string, error) {
 		return s, nil
 	}
 	src := hack.StringToBytes(s)
-	dst := make([]byte, len(s))
+	dst := dirtmake.Bytes(len(s), len(s))
 	srcIndex := len(s)
 	dstIndex := 0
 	for srcIndex > 0 {
