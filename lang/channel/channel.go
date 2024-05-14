@@ -216,10 +216,7 @@ func (c *channel) Close() {
 	if !atomic.CompareAndSwapInt32(&c.state, 0, -1) {
 		return
 	}
-	// stop consumer
-	c.bufferLock.Lock()
-	c.buffer.Init() // clear buffer
-	c.bufferLock.Unlock()
+	// Close function only notify Input/consume goroutine to close gracefully
 	c.bufferCond.Broadcast()
 }
 
@@ -253,6 +250,10 @@ func (c *channel) Input(v interface{}) {
 		for c.buffer.Len() >= c.size {
 			// wait for consuming
 			c.bufferCond.Wait()
+			if c.isClosed() {
+				// blocking send a closed channel should return directly
+				return
+			}
 		}
 	}
 	c.enqueueBuffer(it)
@@ -289,7 +290,7 @@ func (c *channel) consume() {
 		c.bufferLock.Lock()
 		for c.buffer.Len() == 0 {
 			if c.isClosed() {
-				close(c.consumer)
+				close(c.consumer)               // close consumer
 				atomic.StoreInt32(&c.state, -2) // -2 means closed totally
 				c.bufferLock.Unlock()
 				return

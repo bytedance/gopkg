@@ -462,3 +462,32 @@ func TestFastRecoverConsumer(t *testing.T) {
 	}
 	// all consumed
 }
+
+func TestChannelCloseThenConsume(t *testing.T) {
+	size := 10
+	ch := New(WithNonBlock(), WithSize(size))
+	for i := 0; i < size; i++ {
+		ch.Input(i)
+	}
+	ch.Close()
+	for i := 0; i < size; i++ {
+		x := <-ch.Output()
+		assert.NotNil(t, x)
+		n := x.(int)
+		assert.Equal(t, n, x)
+	}
+}
+
+func TestChannelInputAndClose(t *testing.T) {
+	ch := New(WithSize(1))
+	go func() {
+		time.Sleep(time.Millisecond * 100)
+		ch.Close()
+	}()
+	begin := time.Now()
+	for i := 0; i < 10; i++ {
+		ch.Input(1)
+	}
+	cost := time.Now().Sub(begin)
+	assert.True(t, cost.Milliseconds() >= 100)
+}
