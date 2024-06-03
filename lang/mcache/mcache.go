@@ -20,13 +20,18 @@ import (
 	"github.com/bytedance/gopkg/lang/dirtmake"
 )
 
-const maxSize = 46
+const (
+	maxCachedIndex = 30 // len(caches) = maxCachedIndex+1
+
+	// mcache will never cache the buffer that out of maxCachedSize, which will cause high memory usage
+	maxCachedSize = 1 << maxCachedIndex // 1GB
+)
 
 // index contains []byte which cap is 1<<index
-var caches [maxSize]sync.Pool
+var caches [maxCachedIndex + 1]sync.Pool
 
 func init() {
-	for i := 0; i < maxSize; i++ {
+	for i := 0; i <= maxCachedIndex; i++ {
 		size := 1 << i
 		caches[i].New = func() interface{} {
 			buf := dirtmake.Bytes(0, size)
@@ -57,7 +62,12 @@ func Malloc(size int, capacity ...int) []byte {
 	if len(capacity) > 0 && capacity[0] > size {
 		c = capacity[0]
 	}
-	var ret = caches[calcIndex(c)].Get().([]byte)
+	if c > maxCachedSize {
+		return make([]byte, size, c)
+	}
+
+	sizeIdx := calcIndex(c)
+	var ret = caches[sizeIdx].Get().([]byte)
 	ret = ret[:size]
 	return ret
 }
@@ -65,7 +75,7 @@ func Malloc(size int, capacity ...int) []byte {
 // Free should be called when the buf is no longer used.
 func Free(buf []byte) {
 	size := cap(buf)
-	if !isPowerOfTwo(size) {
+	if size > maxCachedSize || !isPowerOfTwo(size) {
 		return
 	}
 	buf = buf[:0]
