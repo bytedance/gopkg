@@ -63,7 +63,7 @@ func Malloc(size int, capacity ...int) []byte {
 		c = capacity[0]
 	}
 	if c > maxCachedSize {
-		return make([]byte, size, c)
+		return dirtmake.Bytes(size, c)
 	}
 
 	sizeIdx := calcIndex(c)
