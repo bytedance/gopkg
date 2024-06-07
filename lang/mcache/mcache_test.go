@@ -22,16 +22,11 @@ import (
 
 func TestMalloc(t *testing.T) {
 	// cached by mcache
-	size := 128
-	buf := Malloc(size, size+1)
+	size := 4096 - 1
+	buf := Malloc(size)
 	assert.Equal(t, len(buf), size)
 	assert.Equal(t, cap(buf), size+1)
-
-	// cached by mcache
-	size = 4096 - 1
-	buf = Malloc(size)
-	assert.Equal(t, len(buf), size)
-	assert.Equal(t, cap(buf), size)
+	_ = buf[:size+1] // resize
 	Free(buf)
 
 	// cached by mcache

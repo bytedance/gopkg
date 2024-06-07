@@ -68,7 +68,7 @@ func Malloc(size int, capacity ...int) []byte {
 
 	sizeIdx := calcIndex(c)
 	var ret = caches[sizeIdx].Get().([]byte)
-	ret = ret[:size:c]
+	ret = ret[:size]
 	return ret
 }
 
