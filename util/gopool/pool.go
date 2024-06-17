@@ -63,12 +63,6 @@ func newTask() interface{} {
 	return &task{}
 }
 
-type taskList struct {
-	sync.Mutex
-	taskHead *task
-	taskTail *task
-}
-
 type pool struct {
 	// The name of the pool
 	name string
