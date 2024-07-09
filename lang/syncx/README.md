@@ -43,3 +43,30 @@ func getput() {
 ```
 
 ## 2. syncx.RWMutex
+
+## 3. syncx.Promise
+
+The `syncx.Promise` provides a facility to store a value or an error that is later acquired asynchronously via a `syncx.Future` created by the `syncx.Promise` object. Note that the `syncx.Promise` object is meant to be used only once.
+
+### Example
+
+```go
+package main
+
+import "github.com/bytedance/gopkg/lang/syncx"
+
+func Supplier() *syncx.Promise {
+    p := syncx.NewPromise()
+	go func() {
+		p.Set("foo", nil)
+    }()
+	return p
+}
+
+func main() {
+   p := Supplier()
+   f := p.Future()
+   val, err := f.Get()
+   println(val, err)
+}
+```
