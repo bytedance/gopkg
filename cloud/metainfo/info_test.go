@@ -17,6 +17,7 @@ package metainfo_test
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/bytedance/gopkg/cloud/metainfo"
@@ -461,12 +462,21 @@ func benchmark(b *testing.B, api string, count int) {
 		for i := 0; i < b.N; i++ {
 			_, _ = metainfo.GetValue(ctx, keys[i%len(keys)])
 		}
+	case "GetValueToMap":
+		b.ReportAllocs()
+		b.ResetTimer()
+		m := make(map[string]string, len(keys))
+		for i := 0; i < b.N; i++ {
+			metainfo.GetValueToMap(ctx, m, keys...)
+		}
 	case "GetAllValues":
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = metainfo.GetAllValues(ctx)
 		}
+	case "GetValueWithKeys":
+		benchmarkGetValueWithKeys(b, ctx, keys)
 	case "RangeValues":
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -563,6 +573,42 @@ func benchmark(b *testing.B, api string, count int) {
 	}
 }
 
+func benchmarkGetValueWithKeys(b *testing.B, ctx context.Context, keys []string) {
+	selectedRatio := 0.1
+	selectedKeyLength := uint64(math.Round(selectedRatio * float64(len(keys))))
+	selectedKeys := keys[:selectedKeyLength]
+
+	b.Run("GetValue", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		m := make(map[string]string, len(selectedKeys))
+		for i := 0; i < b.N; i++ {
+			for j := 0; j < len(selectedKeys); j++ {
+				key := selectedKeys[j]
+				v, _ := metainfo.GetValue(ctx, key)
+				m[key] = v
+			}
+		}
+	})
+
+	b.Run("GetValueToMap", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		m := make(map[string]string, len(selectedKeys))
+		for i := 0; i < b.N; i++ {
+			metainfo.GetValueToMap(ctx, m, selectedKeys...)
+		}
+	})
+
+	b.Run("GetAllValue", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = metainfo.GetAllValues(ctx)
+		}
+	})
+}
+
 func benchmarkParallel(b *testing.B, api string, count int) {
 	ctx, keys, vals := initMetaInfo(count)
 	switch api {
@@ -582,6 +628,17 @@ func benchmarkParallel(b *testing.B, api string, count int) {
 			for pb.Next() {
 				_, _ = metainfo.GetValue(ctx, keys[i%len(keys)])
 				i++
+			}
+		})
+	case "GetValueToMap":
+		b.ReportAllocs()
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				m := make(map[string]string, len(keys))
+				for i := 0; i < b.N; i++ {
+					metainfo.GetValueToMap(ctx, m, keys...)
+				}
 			}
 		})
 	case "GetAllValues":
@@ -727,7 +784,9 @@ func BenchmarkAll(b *testing.B) {
 	APIs := []string{
 		"TransferForward",
 		"GetValue",
+		"GetValueToMap",
 		"GetAllValues",
+		"GetValueWithKeys",
 		"WithValue",
 		"WithValues",
 		"WithValueAcc",
@@ -754,6 +813,7 @@ func BenchmarkAllParallel(b *testing.B) {
 	APIs := []string{
 		"TransferForward",
 		"GetValue",
+		"GetValueToMap",
 		"GetAllValues",
 		"WithValue",
 		"WithValues",
@@ -857,4 +917,13 @@ func TestPersistentValuesCount(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetValueToMap(t *testing.T) {
+	ctx := context.Background()
+	k, v := "key", "value"
+	ctx = metainfo.WithValue(ctx, k, v)
+	m := make(map[string]string, 1)
+	metainfo.GetValueToMap(ctx, m, k)
+	assert(t, m[k] == v)
 }
