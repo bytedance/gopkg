@@ -15,60 +15,66 @@
 package syncx
 
 import (
-	"sync"
 	"sync/atomic"
+)
+
+const (
+	stateFree uint64 = iota
+	stateGray
+	stateDone
 )
 
 type state struct {
 	noCopy noCopy
 
-	m    sync.Mutex
-	c    *sync.Cond
-	done int32
-	val  interface{}
-	err  error
+	state uint64 // high 32 bits are state, low 32 bits are waiter count.
+	sema  uint32
+
+	val interface{}
+	err error
 }
 
 type Promise struct {
-	state *state
+	state state
 }
 
 type Future struct {
 	state *state
 }
 
-func newState() *state {
-	s := &state{}
-	s.c = sync.NewCond(&s.m)
-	return s
-}
-
 func (s *state) set(val interface{}, err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-	if atomic.LoadInt32(&s.done) == 1 {
-		panic("promise already satisfied")
+	for {
+		state := atomic.LoadUint64(&s.state)
+		if (state >> 32) > stateFree {
+			panic("promise already satisfied")
+		}
+		if atomic.CompareAndSwapUint64(&s.state, state, state+(1<<32)) {
+			s.val = val
+			s.err = err
+			state := atomic.AddUint64(&s.state, 1)
+			for w := state & (1<<32 - 1); w > 0; w-- {
+				runtime_Semrelease(&s.sema, false, 0)
+			}
+			return
+		}
 	}
-	s.val = val
-	s.err = err
-	atomic.StoreInt32(&s.done, 1)
-	s.c.Broadcast()
 }
 
 func (s *state) get() (interface{}, error) {
-	if atomic.LoadInt32(&s.done) == 1 {
-		return s.val, s.err
+	for {
+		state := atomic.LoadUint64(&s.state)
+		if (state >> 32) == stateDone {
+			return s.val, s.err
+		}
+		if atomic.CompareAndSwapUint64(&s.state, state, state+1) {
+			runtime_Semacquire(&s.sema)
+			return s.val, s.err
+		}
 	}
-	s.m.Lock()
-	defer s.m.Unlock()
-	for atomic.LoadInt32(&s.done) != 1 {
-		s.c.Wait()
-	}
-	return s.val, s.err
 }
 
 func NewPromise() *Promise {
-	return &Promise{state: newState()}
+	return &Promise{}
 }
 
 func (p *Promise) Set(val interface{}, err error) {
@@ -76,7 +82,7 @@ func (p *Promise) Set(val interface{}, err error) {
 }
 
 func (p *Promise) Future() *Future {
-	return &Future{state: p.state}
+	return &Future{state: &p.state}
 }
 
 func (f *Future) Get() (interface{}, error) {

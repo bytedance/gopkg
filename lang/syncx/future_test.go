@@ -70,3 +70,44 @@ func TestPromiseSetTwice(t *testing.T) {
 		p.Set(1, nil)
 	})
 }
+
+func Benchmark(b *testing.B) {
+	b.Run("Promise", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			p := NewPromise()
+			f := p.Future()
+			go func() {
+				p.Set(nil, nil)
+			}()
+			_, _ = f.Get()
+		}
+	})
+	b.Run("WaitGroup", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			var val interface{}
+			var err error
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+			go func() {
+				val, err = nil, nil
+				wg.Done()
+			}()
+			wg.Wait()
+			_, _ = val, err
+		}
+	})
+	// channel does not support multi-consumers. This is used to compare the performance of a single consumer.
+	b.Run("Channel", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			var val interface{}
+			var err error
+			ch := make(chan struct{})
+			go func() {
+				val, err = nil, nil
+				ch <- struct{}{}
+			}()
+			<-ch
+			_, _ = val, err
+		}
+	})
+}

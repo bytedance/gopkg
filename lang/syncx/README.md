@@ -55,18 +55,18 @@ package main
 
 import "github.com/bytedance/gopkg/lang/syncx"
 
-func Supplier() *syncx.Promise {
-    p := syncx.NewPromise()
+func foo() *syncx.Promise {
+	p := syncx.NewPromise()
 	go func() {
 		p.Set("foo", nil)
-    }()
+	}()
 	return p
 }
 
 func main() {
-   p := Supplier()
-   f := p.Future()
-   val, err := f.Get()
-   println(val, err)
+	p := foo()
+	f := p.Future()
+	val, err := f.Get()
+	println(val, err)
 }
 ```
