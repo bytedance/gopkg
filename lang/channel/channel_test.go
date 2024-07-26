@@ -305,11 +305,11 @@ func TestChannelGoroutinesThrottle(t *testing.T) {
 
 func TestChannelNoConsumer(t *testing.T) {
 	// zero size channel
-	ch := New()
+	ch1 := New()
 	var sum int32
 	go func() {
 		for i := 1; i <= 20; i++ {
-			ch.Input(i)
+			ch1.Input(i)
 			//tlogf(t, "producer=%d finished", i)
 			atomic.AddInt32(&sum, 1)
 		}
@@ -318,11 +318,11 @@ func TestChannelNoConsumer(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&sum))
 
 	// 1 size channel
-	ch = New(WithSize(1))
+	ch2 := New(WithSize(1))
 	atomic.StoreInt32(&sum, 0)
 	go func() {
 		for i := 1; i <= 20; i++ {
-			ch.Input(i)
+			ch2.Input(i)
 			//tlogf(t, "producer=%d finished", i)
 			atomic.AddInt32(&sum, 1)
 		}
@@ -331,11 +331,11 @@ func TestChannelNoConsumer(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&sum))
 
 	// 10 size channel
-	ch = New(WithSize(10))
+	ch3 := New(WithSize(10))
 	atomic.StoreInt32(&sum, 0)
 	go func() {
 		for i := 1; i <= 20; i++ {
-			ch.Input(i)
+			ch3.Input(i)
 			//tlogf(t, "producer=%d finished", i)
 			atomic.AddInt32(&sum, 1)
 		}
