@@ -31,8 +31,8 @@ func BenchmarkPerPBuckets(b *testing.B) {
 	}
 }
 
-// TestPerPMetricser1 tests basic functions
-func TestPerPMetricser1(t *testing.T) {
+// TestPerPMetricer1 tests basic functions
+func TestPerPMetricer1(t *testing.T) {
 	m := newPerPWindow()
 
 	// no data
@@ -86,8 +86,8 @@ func TestPerPMetricser1(t *testing.T) {
 	assert(t, ts > int64(tot/3-1000) && ts < int64(tot/3+1000))
 }
 
-// TestPerPMetricser2 tests functions about time
-func TestPerPMetricser2(t *testing.T) {
+// TestPerPMetricer2 tests functions about time
+func TestPerPMetricer2(t *testing.T) {
 	p, _ := NewPanel(nil, Options{BucketTime: time.Millisecond * 10, BucketNums: 100})
 	b := p.(*panel).getBreaker("test")
 	m := b.metricer
