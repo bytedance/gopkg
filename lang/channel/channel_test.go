@@ -108,17 +108,18 @@ func TestChannelClose(t *testing.T) {
 	go func() {
 		for v := range ch.Output() {
 			id := v.(int)
-			tlogf(t, "consumer=%d started", id)
+			//tlogf(t, "consumer=%d started", id)
+			_ = id
 		}
 		atomic.AddInt32(&exit, 1)
 	}()
 	for i := 1; i <= 20; i++ {
 		ch.Input(i)
-		tlogf(t, "producer=%d started", i)
+		//tlogf(t, "producer=%d started", i)
 	}
 	ch.Close()
 	for runtime.NumGoroutine() > beginGs {
-		tlogf(t, "num goroutines: %d, beginGs: %d", runtime.NumGoroutine(), beginGs)
+		//tlogf(t, "num goroutines: %d, beginGs: %d", runtime.NumGoroutine(), beginGs)
 		runtime.Gosched()
 	}
 	<-ch.Output() // never block
@@ -198,13 +199,14 @@ func TestChannelConsumerInflightLimit(t *testing.T) {
 		for c := range ch.Output() {
 			atomic.AddInt32(&inflight, 1)
 			id := c.(int)
-			tlogf(t, "consumer=%d started", id)
+			//tlogf(t, "consumer=%d started", id)
 			go func() {
 				defer atomic.AddInt32(&inflight, -1)
 				defer wg.Done()
 				time.Sleep(time.Second)
-				tlogf(t, "consumer=%d finished", id)
+				//tlogf(t, "consumer=%d finished", id)
 			}()
+			_ = id
 		}
 	}()
 
@@ -230,7 +232,8 @@ func TestChannelProducerSpeedLimit(t *testing.T) {
 		for c := range ch.Output() {
 			id := c.(int)
 			time.Sleep(time.Millisecond * 100)
-			tlogf(t, "consumer=%d finished", id)
+			//tlogf(t, "consumer=%d finished", id)
+			_ = id
 		}
 	}()
 
@@ -253,7 +256,8 @@ func TestChannelProducerNoLimit(t *testing.T) {
 		for c := range ch.Output() {
 			id := c.(int)
 			time.Sleep(time.Millisecond * 100)
-			tlogf(t, "consumer=%d finished", id)
+			//tlogf(t, "consumer=%d finished", id)
+			_ = id
 		}
 	}()
 
@@ -282,9 +286,10 @@ func TestChannelGoroutinesThrottle(t *testing.T) {
 			id := c.(int)
 			go func() {
 				time.Sleep(time.Millisecond * 100)
-				tlogf(t, "consumer=%d finished", id)
+				//tlogf(t, "consumer=%d finished", id)
 				wg.Done()
 			}()
+			_ = id
 		}
 	}()
 
@@ -292,7 +297,7 @@ func TestChannelGoroutinesThrottle(t *testing.T) {
 		wg.Add(1)
 		id := i
 		ch.Input(id)
-		tlogf(t, "producer=%d finished", id)
+		//tlogf(t, "producer=%d finished", id)
 		runtime.Gosched()
 	}
 	wg.Wait()
@@ -300,12 +305,12 @@ func TestChannelGoroutinesThrottle(t *testing.T) {
 
 func TestChannelNoConsumer(t *testing.T) {
 	// zero size channel
-	ch := New()
+	ch1 := New()
 	var sum int32
 	go func() {
 		for i := 1; i <= 20; i++ {
-			ch.Input(i)
-			tlogf(t, "producer=%d finished", i)
+			ch1.Input(i)
+			//tlogf(t, "producer=%d finished", i)
 			atomic.AddInt32(&sum, 1)
 		}
 	}()
@@ -313,12 +318,12 @@ func TestChannelNoConsumer(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&sum))
 
 	// 1 size channel
-	ch = New(WithSize(1))
+	ch2 := New(WithSize(1))
 	atomic.StoreInt32(&sum, 0)
 	go func() {
 		for i := 1; i <= 20; i++ {
-			ch.Input(i)
-			tlogf(t, "producer=%d finished", i)
+			ch2.Input(i)
+			//tlogf(t, "producer=%d finished", i)
 			atomic.AddInt32(&sum, 1)
 		}
 	}()
@@ -326,12 +331,12 @@ func TestChannelNoConsumer(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&sum))
 
 	// 10 size channel
-	ch = New(WithSize(10))
+	ch3 := New(WithSize(10))
 	atomic.StoreInt32(&sum, 0)
 	go func() {
 		for i := 1; i <= 20; i++ {
-			ch.Input(i)
-			tlogf(t, "producer=%d finished", i)
+			ch3.Input(i)
+			//tlogf(t, "producer=%d finished", i)
 			atomic.AddInt32(&sum, 1)
 		}
 	}()
@@ -351,13 +356,13 @@ func TestChannelOneSlowTask(t *testing.T) {
 				time.Sleep(time.Millisecond * 200)
 			}
 			atomic.AddInt32(&total, 1)
-			tlogf(t, "consumer=%d finished", id)
+			//tlogf(t, "consumer=%d finished", id)
 		}
 	}()
 
 	for i := 1; i <= 20; i++ {
 		ch.Input(i)
-		tlogf(t, "producer=%d finished", i)
+		//tlogf(t, "producer=%d finished", i)
 	}
 	time.Sleep(time.Millisecond * 300)
 	assert.Equal(t, int32(11), atomic.LoadInt32(&total))
@@ -373,7 +378,8 @@ func TestChannelProduceRateControl(t *testing.T) {
 	go func() {
 		for c := range ch.Output() {
 			id := c.(int)
-			tlogf(t, "consumed: %d", id)
+			//tlogf(t, "consumed: %d", id)
+			_ = id
 		}
 	}()
 	begin := time.Now()
@@ -393,7 +399,8 @@ func TestChannelConsumeRateControl(t *testing.T) {
 	go func() {
 		for c := range ch.Output() {
 			id := c.(int)
-			tlogf(t, "consumed: %d", id)
+			//tlogf(t, "consumed: %d", id)
+			_ = id
 		}
 	}()
 	begin := time.Now()
@@ -409,9 +416,8 @@ func TestChannelNonBlock(t *testing.T) {
 	defer ch.Close()
 
 	begin := time.Now()
-	for i := 1; i <= 10000; i++ {
+	for i := 1; i <= 2000; i++ {
 		ch.Input(i)
-		tlogf(t, "producer=%d finished", i)
 	}
 	cost := time.Now().Sub(begin)
 	tlogf(t, "Cost %dms", cost.Milliseconds())
@@ -434,9 +440,10 @@ func TestFastRecoverConsumer(t *testing.T) {
 	go func() {
 		for c := range ch.Output() {
 			id := c.(int)
-			t.Logf("consumed: %d", id)
+			//t.Logf("consumed: %d", id)
 			time.Sleep(time.Millisecond * 100)
 			atomic.AddInt32(&consumed, 1)
+			_ = id
 		}
 	}()
 

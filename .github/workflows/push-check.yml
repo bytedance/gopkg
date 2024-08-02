@@ -4,15 +4,18 @@ on:
   push:
     paths-ignore:
       - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
 
 jobs:
   build:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: 1.15
 
@@ -24,7 +27,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Check License Header
-        uses: apache/skywalking-eyes@main
+        uses: apache/skywalking-eyes/header@v0.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -34,4 +37,4 @@ jobs:
           go vet -stdmethods=false $(go list ./...)
 
       - name: Unit Test
-        run: go test -v -cpu=4 -race -covermode=atomic -coverprofile=coverage.out ./...
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...

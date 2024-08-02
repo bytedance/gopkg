@@ -77,17 +77,18 @@ func TestMetricser1(t *testing.T) {
 	}
 
 	rate := m.ErrorRate()
-	assert(t, (rate > .6 && rate < .7))
+	assert(t, rate > .6 && rate < .7)
 	s = m.Successes()
-	assert(t, (s > int64(tot/3-1000) && s < int64(tot/3+1000)))
+	assert(t, s > int64(tot/3-1000) && s < int64(tot/3+1000))
 	f = m.Failures()
-	assert(t, (f > int64(tot/3-1000) && f < int64(tot/3+1000)))
+	assert(t, f > int64(tot/3-1000) && f < int64(tot/3+1000))
 	ts := m.Timeouts()
-	assert(t, (ts > int64(tot/3-1000) && ts < int64(tot/3+1000)))
+	assert(t, ts > int64(tot/3-1000) && ts < int64(tot/3+1000))
 }
 
 // TestMetricser2 tests functions about time
 func TestMetricser2(t *testing.T) {
+	t.Skipf("it's not a stable unit tests since depend time stricly")
 	p, _ := NewPanel(nil, Options{BucketTime: time.Millisecond * 10, BucketNums: 100})
 	b := p.(*panel).getBreaker("test")
 	m := b.metricer

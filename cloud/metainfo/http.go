@@ -84,8 +84,10 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 	// inherit from exist ctx node
 	persistent := newKVStore()
 	transient := newKVStore()
+	stale := newKVStore()
 	sliceToMap(nd.persistent, persistent)
 	sliceToMap(nd.transient, transient)
+	sliceToMap(nd.stale, stale)
 
 	// insert new kvs from http header
 	h.Visit(func(k, v string) {
@@ -104,14 +106,15 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 	})
 
 	// return original ctx if no invalid key in http header
-	if (persistent.size() + transient.size()) == 0 {
+	if (persistent.size() + transient.size() + stale.size()) == 0 {
 		return ctx
 	}
 
 	// make new kvs
-	nd = newNodeFromMaps(persistent, transient, nil)
+	nd = newNodeFromMaps(persistent, transient, stale)
 	persistent.recycle()
 	transient.recycle()
+	stale.recycle()
 	ctx = withNode(ctx, nd)
 	return ctx
 }

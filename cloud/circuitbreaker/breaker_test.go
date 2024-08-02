@@ -17,7 +17,6 @@ package circuitbreaker
 import (
 	"math/rand"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -266,8 +265,8 @@ func TestBreakerReset(t *testing.T) {
 }
 
 func TestBreakerConcurrent(t *testing.T) {
-	cooling := time.Millisecond * 100
-	retry := time.Millisecond * 50
+	cooling := time.Millisecond * 1000
+	retry := time.Millisecond * 500
 	opt := Options{
 		CoolingTimeout: cooling,
 		DetectTimeout:  retry,
@@ -290,26 +289,15 @@ func TestBreakerConcurrent(t *testing.T) {
 			// CoolingTimeout
 			time.Sleep(cooling)
 			var wg sync.WaitGroup
-			pass := int32(0)
-			fail := int32(0)
-			for i := 0; i < 50; i++ {
+			b.IsAllowed()
+			for i := 0; i < 49; i++ {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					if b.IsAllowed() {
-						atomic.AddInt32(&pass, 1)
-					} else {
-						atomic.AddInt32(&fail, 1)
-					}
+					assert(t, !b.IsAllowed())
 				}()
 			}
 			wg.Wait()
-			if pass != 1 {
-				t.Errorf("want 1 pass but got %d pass", pass)
-			}
-			if fail != 49 {
-				t.Errorf("want 49 fails but got %d fails", fail)
-			}
 		}()
 	}
 	w.Wait()

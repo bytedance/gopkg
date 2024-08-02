@@ -80,9 +80,9 @@ func TestNetworkIsolationOrDownstreamBlock(t *testing.T) {
 		Service1(req)
 	}
 	cost := time.Now().Sub(start)
-	assert.True(t, cost < time.Millisecond*10) // Service1 should not block
-	time.Sleep(time.Millisecond * 1500)        // wait all tasks finished
-	assert.Equal(t, int32(50), responded)      // 50 success and 10 timeout and 40 discard
+	assert.True(t, cost < time.Millisecond*10)               // Service1 should not block
+	time.Sleep(time.Millisecond * 1500)                      // wait all tasks finished
+	assert.Equal(t, int32(50), atomic.LoadInt32(&responded)) // 50 success and 10 timeout and 40 discard
 }
 
 func TestCPUHeavy(t *testing.T) {
@@ -130,7 +130,7 @@ func TestCPUHeavy(t *testing.T) {
 		Service1(req)
 	}
 	cost := time.Now().Sub(start)
-	assert.True(t, cost < time.Millisecond*10) // Service1 should not block
-	time.Sleep(time.Second * 2)                // wait all tasks finished
-	t.Logf("responded: %d", responded)         // most tasks success
+	assert.True(t, cost < time.Millisecond*10)            // Service1 should not block
+	time.Sleep(time.Second * 2)                           // wait all tasks finished
+	t.Logf("responded: %d", atomic.LoadInt32(&responded)) // most tasks success
 }
