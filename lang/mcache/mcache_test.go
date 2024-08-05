@@ -14,11 +14,34 @@
 
 package mcache
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestMalloc(t *testing.T) {
-	buf := Malloc(4096)
-	t.Log(cap(buf))
+	// cached by mcache
+	size := 4096 - 1
+	buf := Malloc(size)
+	assert.Equal(t, len(buf), size)
+	assert.Equal(t, cap(buf), size+1)
+	_ = buf[:size+1] // resize
+	Free(buf)
+
+	// cached by mcache
+	size = 1024 * 1024 * 1024
+	buf = Malloc(size)
+	assert.Equal(t, len(buf), size)
+	assert.Equal(t, cap(buf), size)
+	Free(buf)
+
+	// not cached by mcache
+	size = 1024*1024*1024 + 1
+	buf = Malloc(size)
+	assert.Equal(t, len(buf), size)
+	assert.Equal(t, cap(buf), size)
+	Free(buf)
 }
 
 func BenchmarkNormal4096(b *testing.B) {
