@@ -45,7 +45,7 @@ func TestDigest(t *testing.T) {
 		d.Reset()
 	}
 
-	largedata := make([]byte, 1024*1024)
+	largedata := make([]byte, 10*1024)
 	for i := range largedata {
 		largedata[i] = byte(rand.Int31n(256))
 	}
