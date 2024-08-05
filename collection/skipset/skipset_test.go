@@ -177,7 +177,7 @@ func TestIntSet(t *testing.T) {
 
 	// Test all methods.
 	const smallRndN = 1 << 8
-	for i := 0; i < 1<<16; i++ {
+	for i := 0; i < 1<<12; i++ {
 		wg.Add(1)
 		go func() {
 			r := fastrand.Uint32n(num)

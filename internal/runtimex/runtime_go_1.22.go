@@ -1,4 +1,4 @@
-// Copyright 2021 ByteDance Inc.
+// Copyright 2024 ByteDance Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mcache
+//go:build go1.22
+// +build go1.22
 
-import "math/bits"
+package runtimex
 
-func bsr(x int) int {
-	return bits.Len(uint(x)) - 1
-}
+import (
+	_ "unsafe" // for linkname
+)
 
-func isPowerOfTwo(x int) bool {
-	return (x & (-x)) == x
-}
+//go:linkname Fastrand runtime.cheaprand
+func Fastrand() uint32

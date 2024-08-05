@@ -43,6 +43,6 @@ func Assertf(t testingTB, cond bool, format string, val ...interface{}) {
 func deepEqual(t testingTB, a, b interface{}) {
 	t.Helper()
 	if !reflect.DeepEqual(a, b) {
-		t.Fatal("assertion failed")
+		t.Fatalf("assertion failed: %v != %v", a, b)
 	}
 }

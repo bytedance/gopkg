@@ -22,13 +22,9 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-func accumAVX2(acc *[8]uint64, xinput, xsecret unsafe.Pointer, len uintptr)
-func accumSSE2(acc *[8]uint64, xinput, xsecret unsafe.Pointer, len uintptr)
-
 var (
 	avx2        = cpu.X86.HasAVX2
 	sse2        = cpu.X86.HasSSE2
-	xacc        = [8]uint64{}
 	hashfunc    = [2]func(unsafe.Pointer, int) uint64{xxh3HashSmall, xxh3HashLarge}
 	hashfunc128 = [2]func(unsafe.Pointer, int) [2]uint64{xxh3HashSmall128, xxh3HashLarge128}
 )

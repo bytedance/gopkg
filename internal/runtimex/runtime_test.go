@@ -1,4 +1,4 @@
-// Copyright 2021 ByteDance Inc.
+// Copyright 2024 ByteDance Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mcache
+package runtimex
 
-func bsr(x int) int
+import "testing"
 
-func lzcnt(x int) int
+func TestFastrand(t *testing.T) {
+	var isRandom bool
+	for i := 0; i < 3; i++ {
+		x := Fastrand()
+		y := Fastrand()
+		if x != y {
+			isRandom = true
+			break
+		}
+	}
+	if !isRandom {
+		t.Fatal("Invalid fastrand results")
+	}
+}
+
+func BenchmarkFastrand(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Fastrand()
+	}
+}

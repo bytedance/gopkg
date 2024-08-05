@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mcache
+package xxhash3
 
-import (
-	"testing"
+import "unsafe"
 
-	"github.com/stretchr/testify/assert"
-)
+func accumAVX2(acc *[8]uint64, xinput, xsecret unsafe.Pointer, len uintptr)
+func accumSSE2(acc *[8]uint64, xinput, xsecret unsafe.Pointer, len uintptr)
 
-func TestBsr(t *testing.T) {
-	assert.Equal(t, bsr(4), 2)
-	assert.Equal(t, bsr(24), 4)
-	assert.Equal(t, bsr((1<<10)-1), 9)
-	assert.Equal(t, bsr((1<<30)+(1<<19)+(1<<16)+(1<<1)), 30)
+func accum(xacc *[8]uint64, xinput, xsecret unsafe.Pointer, l uintptr) {
+	if avx2 {
+		accumAVX2(xacc, xinput, xsecret, l)
+	} else if sse2 {
+		accumSSE2(xacc, xinput, xsecret, l)
+	} else {
+		accumScalar(xacc, xinput, xsecret, l)
+	}
 }

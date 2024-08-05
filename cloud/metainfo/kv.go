@@ -14,7 +14,9 @@
 
 package metainfo
 
-import "context"
+import (
+	"context"
+)
 
 type ctxKeyType struct{}
 
@@ -23,6 +25,33 @@ var ctxKey ctxKeyType
 type kv struct {
 	key string
 	val string
+}
+
+func newNodeFromMaps(persistent, transient, stale kvstore) *node {
+	ps, ts, sz := persistent.size(), transient.size(), stale.size()
+	// make slices together to reduce malloc cost
+	kvs := make([]kv, ps+ts+sz)
+	nd := new(node)
+	nd.persistent = kvs[:ps]
+	nd.transient = kvs[ps : ps+ts]
+	nd.stale = kvs[ps+ts:]
+
+	i := 0
+	for k, v := range persistent {
+		nd.persistent[i].key, nd.persistent[i].val = k, v
+		i++
+	}
+	i = 0
+	for k, v := range transient {
+		nd.transient[i].key, nd.transient[i].val = k, v
+		i++
+	}
+	i = 0
+	for k, v := range stale {
+		nd.stale[i].key, nd.stale[i].val = k, v
+		i++
+	}
+	return nd
 }
 
 type node struct {
@@ -47,7 +76,7 @@ func (n *node) addTransient(k, v string) *node {
 	if res, ok := remove(n.stale, k); ok {
 		return &node{
 			persistent: n.persistent,
-			transient: append(n.transient, kv{
+			transient: appendEx(n.transient, kv{
 				key: k,
 				val: v,
 			}),
@@ -67,7 +96,7 @@ func (n *node) addTransient(k, v string) *node {
 	}
 
 	r := *n
-	r.transient = append(r.transient, kv{
+	r.transient = appendEx(r.transient, kv{
 		key: k,
 		val: v,
 	})
@@ -86,7 +115,7 @@ func (n *node) addPersistent(k, v string) *node {
 		return &r
 	}
 	r := *n
-	r.persistent = append(r.persistent, kv{
+	r.persistent = appendEx(r.persistent, kv{
 		key: k,
 		val: v,
 	})
@@ -122,40 +151,6 @@ func (n *node) delPersistent(k string) (r *node) {
 	return n
 }
 
-type mapView struct {
-	persistent map[string]string
-	transient  map[string]string
-	stale      map[string]string
-}
-
-func newMapView() *mapView {
-	return &mapView{
-		persistent: make(map[string]string),
-		transient:  make(map[string]string),
-		stale:      make(map[string]string),
-	}
-}
-
-func (m *mapView) size() int {
-	return len(m.persistent) + len(m.transient) + len(m.stale)
-}
-
-func (m *mapView) toNode() *node {
-	return &node{
-		persistent: mapToSlice(m.persistent),
-		transient:  mapToSlice(m.transient),
-		stale:      mapToSlice(m.stale),
-	}
-}
-
-func (n *node) mapView() *mapView {
-	return &mapView{
-		persistent: sliceToMap(n.persistent),
-		transient:  sliceToMap(n.transient),
-		stale:      sliceToMap(n.stale),
-	}
-}
-
 func search(kvs []kv, key string) (idx int, ok bool) {
 	for i := range kvs {
 		if kvs[i].key == key {
@@ -167,8 +162,13 @@ func search(kvs []kv, key string) (idx int, ok bool) {
 
 func remove(kvs []kv, key string) (res []kv, removed bool) {
 	if idx, ok := search(kvs, key); ok {
-		res = append(res, kvs[:idx]...)
-		res = append(res, kvs[idx+1:]...)
+		if cnt := len(kvs); cnt == 1 {
+			removed = true
+			return
+		}
+		res = make([]kv, len(kvs)-1)
+		copy(res, kvs[:idx])
+		copy(res[idx:], kvs[idx+1:])
 		return res, true
 	}
 	return kvs, false
@@ -188,4 +188,11 @@ func withNode(ctx context.Context, n *node) context.Context {
 		return ctx
 	}
 	return context.WithValue(ctx, ctxKey, n)
+}
+
+func appendEx(arr []kv, x kv) (res []kv) {
+	res = make([]kv, len(arr)+1)
+	copy(res, arr)
+	res[len(arr)] = x
+	return res
 }

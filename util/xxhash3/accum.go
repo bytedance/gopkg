@@ -12,16 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "textflag.h"
+//go:build !amd64
+// +build !amd64
 
-// func lzcnt(x int) int
-TEXT ·lzcnt(SB), NOSPLIT, $0-16
-    LZCNTQ x+0(FP), AX
-    MOVQ AX, ret+8(FP)
-    RET
+package xxhash3
 
-// func bsr(x int) int
-TEXT ·bsr(SB), NOSPLIT, $0-16
-    BSRQ x+0(FP), AX
-    MOVQ AX, ret+8(FP)
-    RET
+import "unsafe"
+
+func accum(xacc *[8]uint64, xinput, xsecret unsafe.Pointer, l uintptr) {
+	accumScalar(xacc, xinput, xsecret, l)
+}

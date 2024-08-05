@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !amd64
-// +build !amd64
+//go:build !go1.22
+// +build !go1.22
 
-package mcache
+package runtimex
 
-func bsr(x int) int {
-	r := 0
-	for x != 0 {
-		x = x >> 1
-		r += 1
-	}
-	return r - 1
-}
+import (
+	_ "unsafe" // for linkname
+)
+
+//go:linkname Fastrand runtime.fastrand
+func Fastrand() uint32
