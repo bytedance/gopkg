@@ -21,5 +21,5 @@ func bsr(x int) int {
 }
 
 func isPowerOfTwo(x int) bool {
-	return (x & (-x)) == x
+	return (x != 0) && ((x & (-x)) == x)
 }
