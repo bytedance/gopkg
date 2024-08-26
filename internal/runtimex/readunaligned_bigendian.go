@@ -16,7 +16,7 @@
 // +build ppc64 s390x mips mips64
 
 //
-// from golang-go/src/os/endian_little.go
+// from golang-go/src/os/endian_big.go
 
 package runtimex
 
