@@ -283,6 +283,8 @@ func (c *channel) consume() {
 		// check throttle
 		if c.throttling(c.consumerThrottle) {
 			// closed
+			close(c.consumer)               // close consumer
+			atomic.StoreInt32(&c.state, -2) // -2 means closed totally
 			return
 		}
 
