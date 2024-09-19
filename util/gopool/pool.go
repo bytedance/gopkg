@@ -130,11 +130,13 @@ func (p *pool) CtxGo(ctx context.Context, f func()) {
 	// 1. the number of tasks is greater than the threshold.
 	// 2. The current number of workers is less than the upper limit p.cap.
 	// or there are currently no workers.
-	if (atomic.LoadInt32(&p.taskCount) >= p.config.ScaleThreshold && p.WorkerCount() < atomic.LoadInt32(&p.cap)) || p.WorkerCount() == 0 {
-		p.incWorkerCount()
-		w := workerPool.Get().(*worker)
-		w.pool = p
-		w.run()
+	workerCount := p.WorkerCount()
+	if (atomic.LoadInt32(&p.taskCount) >= p.config.ScaleThreshold && workerCount < atomic.LoadInt32(&p.cap)) || workerCount == 0 {
+		if atomic.CompareAndSwapInt32(&p.workerCount, workerCount, workerCount+1) {
+			w := workerPool.Get().(*worker)
+			w.pool = p
+			w.run()
+		}
 	}
 }
 
