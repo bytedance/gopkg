@@ -382,8 +382,8 @@ func (z *Float64Set) RevRangeByScoreWithOpt(max, min float64, opt RangeOpt) []Fl
 //
 // RemoveRangeByRank is the replacement of ZREMRANGEBYRANK command of redis.
 func (z *Float64Set) RemoveRangeByRank(start, stop int) []Float64Node {
-	z.mu.RLock()
-	defer z.mu.RUnlock()
+	z.mu.Lock()
+	defer z.mu.Unlock()
 
 	// Convert negative rank to positive.
 	if start < 0 {

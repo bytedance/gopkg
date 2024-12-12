@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -491,6 +493,26 @@ func TestFloat64SetRemoveRangeByRank(t *testing.T) {
 		assert.False(t, z.Contains(n.Value))
 	}
 	assert.Equal(t, N, z.Len()+len(actualNs))
+}
+
+func TestFloat64SetRemoveRangeByRankConcurrently(t *testing.T) {
+	const N = 10000
+	z := NewFloat64()
+	for i := 0; i < N; i++ {
+		z.Add(float64(i), strconv.Itoa(i))
+	}
+	const G = 10
+	wg := sync.WaitGroup{}
+	for i := 0; i < G; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := fastrand.Intn(N / 2)
+			stop := N/2 + start
+			z.RemoveRangeByRank(start, stop)
+		}()
+	}
+	wg.Wait()
 }
 
 func TestFloat64SetRemoveRangeByScore(t *testing.T) {
