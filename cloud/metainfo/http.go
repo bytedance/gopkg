@@ -17,6 +17,7 @@ package metainfo
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/http/httpguts"
 )
@@ -31,6 +32,14 @@ const (
 	lenHPP = len(HTTPPrefixPersistent)
 	lenHPB = len(HTTPPrefixBackward)
 )
+
+func isHTTPPrefixTransient(k string) bool {
+	return len(k) > lenHPT && strings.EqualFold(k[:lenHPT], HTTPPrefixTransient)
+}
+
+func isHTTPPrefixPersistent(k string) bool {
+	return len(k) > lenHPP && strings.EqualFold(k[:lenHPP], HTTPPrefixPersistent)
+}
 
 // HTTPHeaderToCGIVariable performs an CGI variable conversion.
 // For example, an HTTP header key `abc-def` will result in `ABC_DEF`.
@@ -94,13 +103,11 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 		if len(v) == 0 {
 			return
 		}
-		kk := strings.ToLower(k)
-		ln := len(kk)
-		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
+		if isHTTPPrefixTransient(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPT:])
 			transient[kk] = v
-		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
+		} else if isHTTPPrefixPersistent(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPP:])
 			persistent[kk] = v
 		}
 	})
@@ -119,33 +126,98 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 	return ctx
 }
 
-func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
-	nd := &node{
-		persistent: make([]kv, 0, 16), // 32B * 16 = 512B
-		transient:  make([]kv, 0, 16),
-		stale:      []kv{},
+var tmpnodePool = sync.Pool{}
+
+type tmpnode struct {
+	persistent []kv
+	transient  []kv
+}
+
+const (
+	tmpnodeDefaultBufferSize = 32
+	tmpnodeCopyThresholdSize = 0.75 * tmpnodeDefaultBufferSize
+)
+
+func (n *tmpnode) Node() *node {
+	ret := &node{}
+
+	// if case we only have a few kvs, copy
+	if sz := n.Size(); sz <= 2*tmpnodeCopyThresholdSize {
+		kvs := make([]kv, n.Size())
+		sz = copy(kvs, n.persistent)
+		ret.persistent = kvs[:sz:sz]
+		kvs = kvs[sz:]
+		sz = copy(kvs, n.transient)
+		ret.transient = kvs
+		return ret
 	}
+
+	// if > tmpnodeCopyThresholdSize, no copy
+	if sz := len(n.persistent); sz > tmpnodeCopyThresholdSize {
+		ret.persistent = n.persistent
+		n.persistent = nil
+	} else if sz > 0 {
+		ret.persistent = append(make([]kv, 0, sz), n.persistent...)
+	}
+	if sz := len(n.transient); sz > tmpnodeCopyThresholdSize {
+		ret.transient = n.transient
+		n.transient = nil
+	} else if sz > 0 {
+		ret.transient = append(make([]kv, 0, sz), n.transient...)
+	}
+	return ret
+}
+
+func (n *tmpnode) Size() int {
+	return len(n.persistent) + len(n.transient)
+}
+
+func (n *tmpnode) Reset() {
+	if n.persistent == nil {
+		n.persistent = make([]kv, 0, tmpnodeDefaultBufferSize)
+	} else {
+		n.persistent = n.persistent[:0]
+	}
+	if n.transient == nil {
+		n.transient = make([]kv, 0, tmpnodeDefaultBufferSize)
+	} else {
+		n.transient = n.transient[:0]
+	}
+}
+
+func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
+	var nd *tmpnode
+	if v := tmpnodePool.Get(); v == nil {
+		kvs := make([]kv, 2*tmpnodeDefaultBufferSize)
+		nd = &tmpnode{
+			persistent: kvs[:tmpnodeDefaultBufferSize:tmpnodeDefaultBufferSize][:0],
+			transient:  kvs[tmpnodeDefaultBufferSize:][:0],
+		}
+	} else {
+		nd = v.(*tmpnode)
+		nd.Reset()
+	}
+	defer tmpnodePool.Put(nd)
+
 	// insert new kvs from http header to node
 	h.Visit(func(k, v string) {
 		if len(v) == 0 {
 			return
 		}
-		kk := strings.ToLower(k)
-		ln := len(kk)
-		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
+		if isHTTPPrefixTransient(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPT:])
 			nd.transient = append(nd.transient, kv{key: kk, val: v})
-		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
+		} else if isHTTPPrefixPersistent(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPP:])
 			nd.persistent = append(nd.persistent, kv{key: kk, val: v})
 		}
 	})
 
 	// return original ctx if no invalid key in http header
-	if nd.size() == 0 {
+	if nd.Size() == 0 {
 		return ctx
 	}
-	return withNode(ctx, nd)
+	return withNode(ctx, nd.Node())
 }
 
 // ToHTTPHeader writes all metainfo into the given HTTP header.

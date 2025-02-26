@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/bytedance/gopkg/cloud/metainfo"
@@ -70,6 +71,40 @@ func TestFromHTTPHeader(t *testing.T) {
 	assert(t, vs["ABC_DEF"] == "ghi" && vs["123"] == "456", vs)
 	vs = metainfo.GetAllPersistentValues(c1)
 	assert(t, len(vs) == 1 && vs["XYZ"] == "000")
+}
+
+func TestFromHTTPHeader_MoreThanCopyThresholdSize(t *testing.T) {
+	assert(t, metainfo.FromHTTPHeader(nil, nil) == nil)
+
+	// 100 * metainfo.HTTPPrefixTransient, 1 * metainfo.HTTPPrefixPersistent
+	h := make(http.Header)
+	for i := 0; i < 100; i++ {
+		s := strconv.Itoa(i)
+		h.Set(metainfo.HTTPPrefixTransient+"k"+s, "v"+s)
+	}
+	h.Set(metainfo.HTTPPrefixPersistent+"x", "y")
+	ctx := metainfo.FromHTTPHeader(context.Background(), metainfo.HTTPHeader(h))
+	s, _ := metainfo.GetValue(ctx, "K0")
+	assert(t, s == "v0", s)
+	s, _ = metainfo.GetValue(ctx, "K99")
+	assert(t, s == "v99", s)
+	s, _ = metainfo.GetPersistentValue(ctx, "X")
+	assert(t, s == "y", s)
+
+	// 1 * metainfo.HTTPPrefixTransient, 100 * metainfo.HTTPPrefixPersistent
+	h = make(http.Header)
+	for i := 0; i < 100; i++ {
+		s := strconv.Itoa(i)
+		h.Set(metainfo.HTTPPrefixPersistent+"k"+s, "v"+s)
+	}
+	h.Set(metainfo.HTTPPrefixTransient+"x", "y")
+	ctx = metainfo.FromHTTPHeader(context.Background(), metainfo.HTTPHeader(h))
+	s, _ = metainfo.GetPersistentValue(ctx, "K0")
+	assert(t, s == "v0", s)
+	s, _ = metainfo.GetPersistentValue(ctx, "K99")
+	assert(t, s == "v99", s)
+	s, _ = metainfo.GetValue(ctx, "X")
+	assert(t, s == "y", s)
 }
 
 func TestFromHTTPHeaderKeepPreviousData(t *testing.T) {
@@ -140,7 +175,7 @@ func BenchmarkCGIVariableToHTTPHeader(b *testing.B) {
 }
 
 func BenchmarkFromHTTPHeader(b *testing.B) {
-	for _, cnt := range []int{10, 20, 50, 100} {
+	for _, cnt := range []int{0, 10, 20, 50, 100} {
 		hd := make(metainfo.HTTPHeader)
 		hd.Set("content-type", "test")
 		hd.Set("content-length", "12345")
@@ -161,7 +196,7 @@ func BenchmarkFromHTTPHeader(b *testing.B) {
 }
 
 func BenchmarkToHTTPHeader(b *testing.B) {
-	for _, cnt := range []int{10, 20, 50, 100} {
+	for _, cnt := range []int{0, 10, 20, 50, 100} {
 		ctx, _, _ := initMetaInfo(cnt)
 		fun := fmt.Sprintf("ToHTTPHeader-%d", cnt)
 		b.Run(fun, func(b *testing.B) {
