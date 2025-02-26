@@ -140,7 +140,7 @@ func BenchmarkCGIVariableToHTTPHeader(b *testing.B) {
 }
 
 func BenchmarkFromHTTPHeader(b *testing.B) {
-	for _, cnt := range []int{10, 20, 50, 100} {
+	for _, cnt := range []int{0, 10, 20, 50, 100} {
 		hd := make(metainfo.HTTPHeader)
 		hd.Set("content-type", "test")
 		hd.Set("content-length", "12345")
@@ -161,7 +161,7 @@ func BenchmarkFromHTTPHeader(b *testing.B) {
 }
 
 func BenchmarkToHTTPHeader(b *testing.B) {
-	for _, cnt := range []int{10, 20, 50, 100} {
+	for _, cnt := range []int{0, 10, 20, 50, 100} {
 		ctx, _, _ := initMetaInfo(cnt)
 		fun := fmt.Sprintf("ToHTTPHeader-%d", cnt)
 		b.Run(fun, func(b *testing.B) {
