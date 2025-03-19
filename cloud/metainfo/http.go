@@ -171,3 +171,42 @@ func ToHTTPHeader(ctx context.Context, h HTTPHeaderSetter) {
 		}
 	}
 }
+
+// SetBackwardValuesToHTTPHeader writes all backward metainfo into the given HTTP header.
+// Any key or value that does not follow the HTTP specification will be discarded.
+func SetBackwardValuesToHTTPHeader(ctx context.Context, h HTTPHeaderSetter) {
+	if ctx == nil || h == nil {
+		return
+	}
+	for k, v := range AllBackwardValuesToSend(ctx) {
+		if httpguts.ValidHeaderFieldName(k) && httpguts.ValidHeaderFieldValue(v) {
+			k := HTTPPrefixBackward + CGIVariableToHTTPHeader(k)
+			h.Set(k, v)
+		}
+	}
+}
+
+// SetBackwardValuesFromHTTPHeader reads backward metainfo from a given HTTP header and sets them into the context.
+func SetBackwardValuesFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
+	if ctx == nil || h == nil {
+		return ctx
+	}
+	p, ok := ctx.Value(bwCtxKeyRecv).(*bwCtxValue)
+	if !ok {
+		return ctx
+	}
+	p.Lock()
+	h.Visit(func(k, v string) {
+		if len(v) == 0 {
+			return
+		}
+		kk := strings.ToLower(k)
+		ln := len(kk)
+		if ln > lenHPB && strings.HasPrefix(kk, HTTPPrefixBackward) {
+			kk = HTTPHeaderToCGIVariable(kk[lenHPB:])
+			p.kvs[kk] = v
+		}
+	})
+	p.Unlock()
+	return ctx
+}
