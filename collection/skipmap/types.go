@@ -23,10 +23,9 @@ import (
 
 // Float32Map represents a map based on skip list in ascending order.
 type Float32Map struct {
-	header       *float32Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *float32Node
 }
 
 type float32Node struct {
@@ -536,10 +535,9 @@ func (s *Float32Map) Len() int {
 
 // Float32MapDesc represents a map based on skip list in descending order.
 type Float32MapDesc struct {
-	header       *float32NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *float32NodeDesc
 }
 
 type float32NodeDesc struct {
@@ -1049,10 +1047,9 @@ func (s *Float32MapDesc) Len() int {
 
 // Float64Map represents a map based on skip list in ascending order.
 type Float64Map struct {
-	header       *float64Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *float64Node
 }
 
 type float64Node struct {
@@ -1562,10 +1559,9 @@ func (s *Float64Map) Len() int {
 
 // Float64MapDesc represents a map based on skip list in descending order.
 type Float64MapDesc struct {
-	header       *float64NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *float64NodeDesc
 }
 
 type float64NodeDesc struct {
@@ -2075,10 +2071,9 @@ func (s *Float64MapDesc) Len() int {
 
 // Int32Map represents a map based on skip list in ascending order.
 type Int32Map struct {
-	header       *int32Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *int32Node
 }
 
 type int32Node struct {
@@ -2588,10 +2583,9 @@ func (s *Int32Map) Len() int {
 
 // Int32MapDesc represents a map based on skip list in descending order.
 type Int32MapDesc struct {
-	header       *int32NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *int32NodeDesc
 }
 
 type int32NodeDesc struct {
@@ -3101,10 +3095,9 @@ func (s *Int32MapDesc) Len() int {
 
 // Int16Map represents a map based on skip list in ascending order.
 type Int16Map struct {
-	header       *int16Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *int16Node
 }
 
 type int16Node struct {
@@ -3614,10 +3607,9 @@ func (s *Int16Map) Len() int {
 
 // Int16MapDesc represents a map based on skip list in descending order.
 type Int16MapDesc struct {
-	header       *int16NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *int16NodeDesc
 }
 
 type int16NodeDesc struct {
@@ -4127,10 +4119,9 @@ func (s *Int16MapDesc) Len() int {
 
 // IntMap represents a map based on skip list in ascending order.
 type IntMap struct {
-	header       *intNode
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *intNode
 }
 
 type intNode struct {
@@ -4640,10 +4631,9 @@ func (s *IntMap) Len() int {
 
 // IntMapDesc represents a map based on skip list in descending order.
 type IntMapDesc struct {
-	header       *intNodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *intNodeDesc
 }
 
 type intNodeDesc struct {
@@ -5153,10 +5143,9 @@ func (s *IntMapDesc) Len() int {
 
 // Uint64Map represents a map based on skip list in ascending order.
 type Uint64Map struct {
-	header       *uint64Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uint64Node
 }
 
 type uint64Node struct {
@@ -5666,10 +5655,9 @@ func (s *Uint64Map) Len() int {
 
 // Uint64MapDesc represents a map based on skip list in descending order.
 type Uint64MapDesc struct {
-	header       *uint64NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uint64NodeDesc
 }
 
 type uint64NodeDesc struct {
@@ -6179,10 +6167,9 @@ func (s *Uint64MapDesc) Len() int {
 
 // Uint32Map represents a map based on skip list in ascending order.
 type Uint32Map struct {
-	header       *uint32Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uint32Node
 }
 
 type uint32Node struct {
@@ -6692,10 +6679,9 @@ func (s *Uint32Map) Len() int {
 
 // Uint32MapDesc represents a map based on skip list in descending order.
 type Uint32MapDesc struct {
-	header       *uint32NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uint32NodeDesc
 }
 
 type uint32NodeDesc struct {
@@ -7205,10 +7191,9 @@ func (s *Uint32MapDesc) Len() int {
 
 // Uint16Map represents a map based on skip list in ascending order.
 type Uint16Map struct {
-	header       *uint16Node
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uint16Node
 }
 
 type uint16Node struct {
@@ -7718,10 +7703,9 @@ func (s *Uint16Map) Len() int {
 
 // Uint16MapDesc represents a map based on skip list in descending order.
 type Uint16MapDesc struct {
-	header       *uint16NodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uint16NodeDesc
 }
 
 type uint16NodeDesc struct {
@@ -8231,10 +8215,9 @@ func (s *Uint16MapDesc) Len() int {
 
 // UintMap represents a map based on skip list in ascending order.
 type UintMap struct {
-	header       *uintNode
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uintNode
 }
 
 type uintNode struct {
@@ -8744,10 +8727,9 @@ func (s *UintMap) Len() int {
 
 // UintMapDesc represents a map based on skip list in descending order.
 type UintMapDesc struct {
-	header       *uintNodeDesc
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *uintNodeDesc
 }
 
 type uintNodeDesc struct {
@@ -9257,10 +9239,9 @@ func (s *UintMapDesc) Len() int {
 
 // StringMap represents a map based on skip list.
 type StringMap struct {
-	header       *stringNode
-	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
+	header       *stringNode
 }
 
 type stringNode struct {
