@@ -28,6 +28,7 @@ import (
 // Int64Map represents a map based on skip list in ascending order.
 type Int64Map struct {
 	header       *int64Node
+	_            uintptr
 	length       int64
 	highestLevel int64 // highest level for now
 }
