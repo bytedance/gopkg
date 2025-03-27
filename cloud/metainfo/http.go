@@ -32,6 +32,14 @@ const (
 	lenHPB = len(HTTPPrefixBackward)
 )
 
+func isHTTPPrefixTransient(k string) bool {
+	return len(k) > lenHPT && strings.EqualFold(k[:lenHPT], HTTPPrefixTransient)
+}
+
+func isHTTPPrefixPersistent(k string) bool {
+	return len(k) > lenHPP && strings.EqualFold(k[:lenHPP], HTTPPrefixPersistent)
+}
+
 // HTTPHeaderToCGIVariable performs an CGI variable conversion.
 // For example, an HTTP header key `abc-def` will result in `ABC_DEF`.
 func HTTPHeaderToCGIVariable(key string) string {
@@ -94,13 +102,11 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 		if len(v) == 0 {
 			return
 		}
-		kk := strings.ToLower(k)
-		ln := len(kk)
-		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
+		if isHTTPPrefixTransient(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPT:])
 			transient[kk] = v
-		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
+		} else if isHTTPPrefixPersistent(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPP:])
 			persistent[kk] = v
 		}
 	})
@@ -120,32 +126,38 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 }
 
 func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
-	nd := &node{
-		persistent: make([]kv, 0, 16), // 32B * 16 = 512B
-		transient:  make([]kv, 0, 16),
-		stale:      []kv{},
+	// coz we don't know how many kvs would be in HTTPHeaderCarrier
+	// it's hard to prealloc enough mem for any cases
+	// use `tmpnode` here for optimizing mem allocation
+	var nd *tmpnode
+	if v := tmpnodePool.Get(); v == nil {
+		nd = &tmpnode{}
+	} else {
+		nd = v.(*tmpnode)
 	}
+	nd.Reset()
+
+	defer tmpnodePool.Put(nd)
+
 	// insert new kvs from http header to node
 	h.Visit(func(k, v string) {
 		if len(v) == 0 {
 			return
 		}
-		kk := strings.ToLower(k)
-		ln := len(kk)
-		if ln > lenHPT && strings.HasPrefix(kk, HTTPPrefixTransient) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPT:])
+		if isHTTPPrefixTransient(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPT:])
 			nd.transient = append(nd.transient, kv{key: kk, val: v})
-		} else if ln > lenHPP && strings.HasPrefix(kk, HTTPPrefixPersistent) {
-			kk = HTTPHeaderToCGIVariable(kk[lenHPP:])
+		} else if isHTTPPrefixPersistent(k) {
+			kk := HTTPHeaderToCGIVariable(k[lenHPP:])
 			nd.persistent = append(nd.persistent, kv{key: kk, val: v})
 		}
 	})
 
 	// return original ctx if no invalid key in http header
-	if nd.size() == 0 {
+	if nd.Size() == 0 {
 		return ctx
 	}
-	return withNode(ctx, nd)
+	return withNode(ctx, nd.Node())
 }
 
 // ToHTTPHeader writes all metainfo into the given HTTP header.
