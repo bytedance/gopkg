@@ -31,6 +31,8 @@ const (
 	lenPP  = len(PrefixPersistent)
 	lenB   = len(PrefixBackward)
 	lenBD  = len(PrefixBackwardDownstream)
+
+	lenU = lenPTU - lenPT // UPSTREAM_
 )
 
 // **Using empty string as key or value is not support.**
