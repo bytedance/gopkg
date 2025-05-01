@@ -15,7 +15,7 @@
 package gopool
 
 const (
-	defaultScalaThreshold = 1
+	defaultScaleThreshold = 1
 )
 
 // Config is used to config pool.
@@ -29,7 +29,7 @@ type Config struct {
 // NewConfig creates a default Config.
 func NewConfig() *Config {
 	c := &Config{
-		ScaleThreshold: defaultScalaThreshold,
+		ScaleThreshold: defaultScaleThreshold,
 	}
 	return c
 }
