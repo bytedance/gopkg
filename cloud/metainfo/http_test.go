@@ -72,6 +72,30 @@ func TestFromHTTPHeader(t *testing.T) {
 	assert(t, len(vs) == 1 && vs["XYZ"] == "000")
 }
 
+func TestFromHTTPHeaderDuplicatedKey(t *testing.T) {
+
+	h := make(http.Header)
+	c := context.Background()
+
+	// After 'HTTPHeaderToCGIVariable', these keys may be duplicated in metainfo node array
+	h.Set(metainfo.HTTPPrefixTransient+"abc_def", "456")
+	h.Set(metainfo.HTTPPrefixTransient+"ABC-def", "ghi")
+	h.Set(metainfo.HTTPPrefixTransient+"ghi_def", "456")
+	h.Set(metainfo.HTTPPrefixTransient+"GHI-def", "ghi")
+
+	c1 := metainfo.FromHTTPHeader(c, metainfo.HTTPHeader(h))
+
+	// there should be only one node in transient array
+	c1 = metainfo.DelValue(c1, "ABC_DEF")
+	_, ok := metainfo.GetValue(c1, "ABC_DEF")
+	assert(t, !ok)
+
+	// there should be only one node in persist array
+	c1 = metainfo.DelPersistentValue(c1, "GHI_DEF")
+	_, ok = metainfo.GetPersistentValue(c1, "GHI_DEF")
+	assert(t, !ok)
+}
+
 func TestFromHTTPHeaderKeepPreviousData(t *testing.T) {
 	c0 := context.Background()
 	c0 = metainfo.WithValue(c0, "uk", "uv")

@@ -139,6 +139,7 @@ func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Cont
 
 	defer tmpnodePool.Put(nd)
 
+	persistExist, transitExist := map[string]any{}, map[string]any{}
 	// insert new kvs from http header to node
 	h.Visit(func(k, v string) {
 		if len(v) == 0 {
@@ -146,10 +147,18 @@ func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Cont
 		}
 		if isHTTPPrefixTransient(k) {
 			kk := HTTPHeaderToCGIVariable(k[lenHPT:])
-			nd.transient = append(nd.transient, kv{key: kk, val: v})
+			if _, exist := transitExist[kk]; !exist {
+				// after 'HTTPHeaderToCGIVariable', kk may be duplicated
+				// for example: rpc-transit-abc_def and rpc-transit-ABC-def
+				nd.transient = append(nd.transient, kv{key: kk, val: v})
+				transitExist[kk] = struct{}{}
+			}
 		} else if isHTTPPrefixPersistent(k) {
 			kk := HTTPHeaderToCGIVariable(k[lenHPP:])
-			nd.persistent = append(nd.persistent, kv{key: kk, val: v})
+			if _, exist := persistExist[kk]; !exist {
+				nd.persistent = append(nd.persistent, kv{key: kk, val: v})
+				persistExist[kk] = struct{}{}
+			}
 		}
 	})
 
