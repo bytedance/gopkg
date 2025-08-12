@@ -216,6 +216,8 @@ func (c *channel) Close() {
 	if !atomic.CompareAndSwapInt32(&c.state, 0, -1) {
 		return
 	}
+	c.bufferLock.Lock()
+	defer c.bufferLock.Unlock()
 	// Close function only notify Input/consume goroutine to close gracefully
 	c.bufferCond.Broadcast()
 }
@@ -252,14 +254,15 @@ func (c *channel) Input(v interface{}) {
 			c.bufferCond.Wait()
 			if c.isClosed() {
 				// blocking send a closed channel should return directly
+				c.bufferLock.Unlock()
 				return
 			}
 		}
 	}
 	c.enqueueBuffer(it)
 	atomic.AddUint64(&c.produced, 1)
-	c.bufferLock.Unlock()
 	c.bufferCond.Signal() // use Signal because only 1 goroutine wait for cond
+	c.bufferLock.Unlock()
 }
 
 func (c *channel) Output() <-chan interface{} {
@@ -298,8 +301,8 @@ func (c *channel) consume() {
 			c.bufferCond.Wait()
 		}
 		it, ok := c.dequeueBuffer()
-		c.bufferLock.Unlock()
 		c.bufferCond.Broadcast() // use Broadcast because there will be more than 1 goroutines wait for cond
+		c.bufferLock.Unlock()
 		if !ok {
 			// in fact, this case will never happen
 			continue
