@@ -1,5 +1,5 @@
 # global code owners
-*       @PureWhiteWu @zhangyunhao116 @joway
+*       @PureWhiteWu @zhangyunhao116 @joway @jayantxie
 
 # cache code owners
 /cache/asynccache @PureWhiteWu @zhangyunhao116
@@ -19,10 +19,10 @@
 /lang/mcache @PureWhiteWu @zhangyunhao116
 /lang/syncx @PureWhiteWu @zhangyunhao116
 /lang/stringx @kaka19ace
-/lang/channel @joway
+/lang/channel @joway @jayantxie @ppzqh
 
 # util code owners
 /util/gopool @PureWhiteWu @zhangyunhao116
 /util/logger @PureWhiteWu @zhangyunhao116
 /util/xxhash3 @lyeeeeee
-/util/gctuner @joway
+/util/gctuner @joway @jayantxie @ppzqh
