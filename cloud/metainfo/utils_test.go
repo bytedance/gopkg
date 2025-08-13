@@ -90,6 +90,34 @@ func TestSetMetaInfoFromMap(t *testing.T) {
 	assert(t, !ok5)
 	assert(t, ok6)
 	assert(t, v3 == "v6")
+
+	// Overwrites
+	m[k4] = "v4+"
+	m[k5] = "v5+"
+	m[k6] = "v6+"
+	ctx3 := metainfo.SetMetaInfoFromMap(ctx, m)
+	assert(t, ctx3 != ctx)
+	ctx = ctx3
+
+	t.Log(metainfo.GetAllValues(ctx))
+
+	v1, ok1 = metainfo.GetValue(ctx, "k4")
+	v2, ok2 = metainfo.GetValue(ctx, "k5")
+	_, ok3 = metainfo.GetValue(ctx, "k6")
+	assert(t, ok1)
+	assert(t, ok2)
+	assert(t, !ok3)
+	assert(t, v1 == "v4+")
+	assert(t, v2 == "v5+")
+
+	_, ok4 = metainfo.GetPersistentValue(ctx, "k4")
+	_, ok5 = metainfo.GetPersistentValue(ctx, "k5")
+	v3, ok6 = metainfo.GetPersistentValue(ctx, "k6")
+	assert(t, !ok4)
+	assert(t, !ok5)
+	assert(t, ok6)
+	assert(t, v3 == "v6+")
+
 }
 
 func TestSetMetaInfoFromMapKeepPreviousData(t *testing.T) {
@@ -151,8 +179,11 @@ func TestSaveMetaInfoToMap(t *testing.T) {
 func BenchmarkSetMetaInfoFromMap(b *testing.B) {
 	ctx := metainfo.WithPersistentValue(context.Background(), "key", "val")
 	m := map[string]string{}
-	for i := 0; i < 32; i++ {
+	for i := 0; i < 16; i++ {
 		m[fmt.Sprintf("key-%d", i)] = fmt.Sprintf("val-%d", i)
+	}
+	for i := 0; i < 16; i++ {
+		m[fmt.Sprintf("%s_key_%d", metainfo.PrefixPersistent, i)] = fmt.Sprintf("val_%d", i)
 	}
 	b.ReportAllocs()
 	b.ResetTimer()
