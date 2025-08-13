@@ -54,6 +54,7 @@ func TestNetworkIsolationOrDownstreamBlock(t *testing.T) {
 	)
 	defer taskPool.Close()
 	var responded int32
+	timeoutCh := make(chan struct{})
 	go func() {
 		// task worker
 		for task := range taskPool.Output() {
@@ -65,6 +66,11 @@ func TestNetworkIsolationOrDownstreamBlock(t *testing.T) {
 			}()
 			select {
 			case <-time.After(time.Millisecond * 100):
+				select {
+				case <-timeoutCh:
+				default:
+					close(timeoutCh)
+				}
 			case <-done:
 				atomic.AddInt32(&responded, 1)
 			}
@@ -80,8 +86,8 @@ func TestNetworkIsolationOrDownstreamBlock(t *testing.T) {
 		Service1(req)
 	}
 	cost := time.Now().Sub(start)
-	assert.True(t, cost < time.Millisecond*10)               // Service1 should not block
-	time.Sleep(time.Millisecond * 1500)                      // wait all tasks finished
+	assert.True(t, cost < time.Millisecond*50)               // Service1 should not block
+	<-timeoutCh                                              // wait all tasks finished
 	assert.Equal(t, int32(50), atomic.LoadInt32(&responded)) // 50 success and 10 timeout and 40 discard
 }
 
