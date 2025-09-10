@@ -16,7 +16,8 @@ package metainfo
 
 import (
 	"context"
-	"strings"
+	"fmt"
+	"sync"
 )
 
 // HasMetaInfo detects whether the given context contains metainfo.
@@ -37,84 +38,25 @@ func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Contex
 		// fast path
 		return newCtxFromMap(ctx, m)
 	}
-	// inherit from node
-	mapSize := len(m)
-	persistent := newKVStore(mapSize)
-	transient := newKVStore(mapSize)
-	stale := newKVStore(mapSize)
-	sliceToMap(nd.persistent, persistent)
-	sliceToMap(nd.transient, transient)
-	sliceToMap(nd.stale, stale)
 
-	// insert new kvs from m to node
-	for k, v := range m {
-		if len(k) == 0 || len(v) == 0 {
-			continue
-		}
-		switch {
-		case strings.HasPrefix(k, PrefixTransientUpstream):
-			if len(k) > lenPTU { // do not move this condition to the case statement to prevent a PTU matches PT
-				stale[k[lenPTU:]] = v
-			}
-		case strings.HasPrefix(k, PrefixTransient):
-			if len(k) > lenPT {
-				transient[k[lenPT:]] = v
-			}
-		case strings.HasPrefix(k, PrefixPersistent):
-			if len(k) > lenPP {
-				persistent[k[lenPP:]] = v
-			}
-		}
-	}
-
-	// return original ctx if no invalid key in map
-	if (persistent.size() + transient.size() + stale.size()) == 0 {
+	p := poolKVLoader.Get().(*kvLoader)
+	defer poolKVLoader.Put(p)
+	if p.Load(m) == 0 {
+		//  no new kv added?
 		return ctx
 	}
-
-	// make new node, and transfer map to list
-	nd = newNodeFromMaps(persistent, transient, stale)
-	persistent.recycle()
-	transient.recycle()
-	stale.recycle()
-	return withNode(ctx, nd)
+	return withNode(ctx, p.Merge(nd))
 }
 
 func newCtxFromMap(ctx context.Context, m map[string]string) context.Context {
-	// make new node
-	mapSize := len(m)
-	nd := &node{
-		persistent: make([]kv, 0, mapSize),
-		transient:  make([]kv, 0, mapSize),
-		stale:      make([]kv, 0, mapSize),
-	}
 
-	// insert new kvs from m to node
-	for k, v := range m {
-		if len(k) == 0 || len(v) == 0 {
-			continue
-		}
-		switch {
-		case strings.HasPrefix(k, PrefixTransientUpstream):
-			if len(k) > lenPTU { // do not move this condition to the case statement to prevent a PTU matches PT
-				nd.stale = append(nd.stale, kv{key: k[lenPTU:], val: v})
-			}
-		case strings.HasPrefix(k, PrefixTransient):
-			if len(k) > lenPT {
-				nd.transient = append(nd.transient, kv{key: k[lenPT:], val: v})
-			}
-		case strings.HasPrefix(k, PrefixPersistent):
-			if len(k) > lenPP {
-				nd.persistent = append(nd.persistent, kv{key: k[lenPP:], val: v})
-			}
-		}
-	}
-
-	// return original ctx if no invalid key in map
-	if nd.size() == 0 {
+	loader := poolKVLoader.Get().(*kvLoader)
+	defer poolKVLoader.Put(loader)
+	// return original ctx if no valid key in map
+	if loader.Load(m) == 0 {
 		return ctx
 	}
-	return withNode(ctx, nd)
+	return withNode(ctx, loader.Node())
 }
 
 // SaveMetaInfoToMap set key-value pairs from ctx to m while filtering out transient-upstream data.
@@ -144,4 +86,115 @@ func sliceToMap(slice []kv, kvs kvstore) {
 	for _, kv := range slice {
 		kvs[kv.key] = kv.val
 	}
+}
+
+var poolKVLoader = sync.Pool{
+	New: func() interface{} {
+		p := &kvLoader{}
+		p.dup = make(map[string]bool, 8)
+		p.persistent = make([]kv, 0, 8)
+		p.transient = make([]kv, 0, 8)
+		p.stale = make([]kv, 0, 8)
+		return p
+	},
+}
+
+type kvLoader struct {
+	dup        map[string]bool
+	persistent []kv // PrefixPersistent
+	transient  []kv // PrefixTransient
+	stale      []kv // PrefixTransientUpstream
+}
+
+func (p *kvLoader) Node() *node {
+	ret := &node{}
+	kvs := make([]kv, len(p.persistent)+len(p.transient)+len(p.stale))
+	if n := len(p.persistent); n != 0 {
+		copy(kvs, p.persistent)
+		ret.persistent = kvs[:n:n]
+		kvs = kvs[n:]
+	}
+	if n := len(p.transient); n != 0 {
+		copy(kvs, p.transient)
+		ret.transient = kvs[:n:n]
+		kvs = kvs[n:]
+	}
+	if len(p.stale) != 0 {
+		copy(kvs, p.stale)
+		ret.stale = kvs
+	}
+	return ret
+}
+
+func (p *kvLoader) String() string {
+	return fmt.Sprintf("persistent:%v, transient:%v, stale:%v",
+		p.persistent, p.transient, p.stale)
+}
+
+func (p *kvLoader) Load(m map[string]string) int {
+	p.persistent = p.persistent[:0]
+	p.transient = p.transient[:0]
+	p.stale = p.stale[:0]
+	for k, v := range m {
+		klen := len(k)
+		if klen == 0 || len(v) == 0 {
+			continue
+		}
+
+		// Check for PrefixTransientUpstream first (longest prefix)
+		if klen >= lenPTU && k[:lenPTU] == PrefixTransientUpstream {
+			if klen > lenPTU { // skip empty key
+				p.stale = append(p.stale, kv{key: k[lenPTU:], val: v})
+			}
+		} else if klen >= lenPT && k[:lenPT] == PrefixTransient {
+			if klen > lenPT {
+				p.transient = append(p.transient, kv{key: k[lenPT:], val: v})
+			}
+		} else if klen >= lenPP && k[:lenPP] == PrefixPersistent {
+			if klen > lenPP {
+				p.persistent = append(p.persistent, kv{key: k[lenPP:], val: v})
+			}
+		}
+	}
+	return len(p.stale) + len(p.transient) + len(p.persistent)
+}
+
+func mergekv(dup map[string]bool, newkvs, oldkvs []kv) []kv {
+	// will be optimized by compiler -> mapclear
+	for k := range dup {
+		delete(dup, k)
+	}
+	for i := range newkvs {
+		dup[newkvs[i].key] = true
+	}
+	for j := range oldkvs {
+		if !dup[oldkvs[j].key] {
+			newkvs = append(newkvs, oldkvs[j])
+		}
+	}
+	return newkvs
+}
+
+func (p *kvLoader) Merge(old *node) *node {
+	if len(p.persistent) != 0 {
+		p.persistent = mergekv(p.dup, p.persistent, old.persistent)
+	}
+	if len(p.transient) != 0 {
+		p.transient = mergekv(p.dup, p.transient, old.transient)
+	}
+	if len(p.stale) != 0 {
+		p.stale = mergekv(p.dup, p.stale, old.stale)
+	}
+	ret := p.Node()
+	// reuse the old node if nothing to merge
+	if len(ret.persistent) == 0 {
+		ret.persistent = old.persistent
+	}
+	if len(ret.transient) == 0 {
+		ret.transient = old.transient
+	}
+	if len(ret.stale) == 0 {
+		ret.stale = old.stale
+	}
+	return ret
 }
