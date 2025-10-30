@@ -20,6 +20,29 @@ import (
 	"testing"
 )
 
+func TestBytes(t *testing.T) {
+	// Test basic functionality
+	b := Bytes(5, 10)
+	if len(b) != 5 {
+		t.Fatalf("expected length 5, got %d", len(b))
+	}
+	if cap(b) != 10 {
+		t.Fatalf("expected capacity 10, got %d", cap(b))
+	}
+
+	// Test zero length and capacity
+	b = Bytes(0, 0)
+	if len(b) != 0 || cap(b) != 0 {
+		t.Fatalf("expected empty slice, got len=%d, cap=%d", len(b), cap(b))
+	}
+
+	// Test equal length and capacity
+	b = Bytes(3, 3)
+	if len(b) != 3 || cap(b) != 3 {
+		t.Fatalf("expected len=3, cap=3, got len=%d, cap=%d", len(b), cap(b))
+	}
+}
+
 var data []byte
 
 const block1kb = 1024
