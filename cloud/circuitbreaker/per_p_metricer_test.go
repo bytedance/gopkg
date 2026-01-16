@@ -103,6 +103,10 @@ func TestPerPMetricer2(t *testing.T) {
 	deepEqual(t, m.Failures(), int64(0))
 	deepEqual(t, m.Timeouts(), int64(0))
 
+	// Re-fetch breaker since it may have been removed after samples became 0
+	b = p.(*panel).getBreaker("test")
+	m = b.metricer
+
 	for i := 0; i < 10; i++ {
 		m.Fail()
 	}

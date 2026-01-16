@@ -178,9 +178,13 @@ func (t *sharedTicker) tick(ticker *time.Ticker) {
 		case <-ticker.C:
 			t.Lock()
 			for p := range t.panels {
-				p.breakers.Range(func(_ string, value interface{}) bool {
+				p.breakers.Range(func(key string, value interface{}) bool {
 					if b, ok := value.(*breaker); ok {
 						b.metricer.tick()
+						// If the breaker has no samples, remove it
+						if b.Metricer().Samples() == 0 {
+							p.RemoveBreaker(key)
+						}
 					}
 					return true
 				})
