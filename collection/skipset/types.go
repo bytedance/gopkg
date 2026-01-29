@@ -71,7 +71,7 @@ func (n *float32Node) equal(value float32) bool {
 	return n.value == value
 }
 
-// NewFloat32 return an empty float32 skip set in ascending order.
+// NewFloat32 returns an emptyfloat32 skip set in ascending order.
 func NewFloat32() *Float32Set {
 	h := newFloat32Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -134,8 +134,8 @@ func unlockFloat32(preds [maxLevel]*float32Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Float32Set) Add(value float32) bool {
@@ -208,7 +208,7 @@ func (s *Float32Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Float32Set) Contains(value float32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -305,7 +305,7 @@ func (s *Float32Set) Range(f func(value float32) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Float32Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -360,7 +360,7 @@ func (n *float32NodeDesc) equal(value float32) bool {
 	return n.value == value
 }
 
-// NewFloat32Desc return an empty float32 skip set in descending order.
+// NewFloat32Desc returns an emptyfloat32 skip set in descending order.
 func NewFloat32Desc() *Float32SetDesc {
 	h := newFloat32NodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -423,8 +423,8 @@ func unlockFloat32Desc(preds [maxLevel]*float32NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Float32SetDesc) Add(value float32) bool {
@@ -497,7 +497,7 @@ func (s *Float32SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Float32SetDesc) Contains(value float32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -594,7 +594,7 @@ func (s *Float32SetDesc) Range(f func(value float32) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Float32SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -649,7 +649,7 @@ func (n *float64Node) equal(value float64) bool {
 	return n.value == value
 }
 
-// NewFloat64 return an empty float64 skip set in ascending order.
+// NewFloat64 returns an emptyfloat64 skip set in ascending order.
 func NewFloat64() *Float64Set {
 	h := newFloat64Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -712,8 +712,8 @@ func unlockFloat64(preds [maxLevel]*float64Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Float64Set) Add(value float64) bool {
@@ -786,7 +786,7 @@ func (s *Float64Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Float64Set) Contains(value float64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -883,7 +883,7 @@ func (s *Float64Set) Range(f func(value float64) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Float64Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -938,7 +938,7 @@ func (n *float64NodeDesc) equal(value float64) bool {
 	return n.value == value
 }
 
-// NewFloat64Desc return an empty float64 skip set in descending order.
+// NewFloat64Desc returns an emptyfloat64 skip set in descending order.
 func NewFloat64Desc() *Float64SetDesc {
 	h := newFloat64NodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -1001,8 +1001,8 @@ func unlockFloat64Desc(preds [maxLevel]*float64NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Float64SetDesc) Add(value float64) bool {
@@ -1075,7 +1075,7 @@ func (s *Float64SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Float64SetDesc) Contains(value float64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -1172,7 +1172,7 @@ func (s *Float64SetDesc) Range(f func(value float64) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Float64SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -1227,7 +1227,7 @@ func (n *int32Node) equal(value int32) bool {
 	return n.value == value
 }
 
-// NewInt32 return an empty int32 skip set in ascending order.
+// NewInt32 returns an emptyint32 skip set in ascending order.
 func NewInt32() *Int32Set {
 	h := newInt32Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -1290,8 +1290,8 @@ func unlockInt32(preds [maxLevel]*int32Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Int32Set) Add(value int32) bool {
@@ -1364,7 +1364,7 @@ func (s *Int32Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Int32Set) Contains(value int32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -1461,7 +1461,7 @@ func (s *Int32Set) Range(f func(value int32) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Int32Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -1516,7 +1516,7 @@ func (n *int32NodeDesc) equal(value int32) bool {
 	return n.value == value
 }
 
-// NewInt32Desc return an empty int32 skip set in descending order.
+// NewInt32Desc returns an emptyint32 skip set in descending order.
 func NewInt32Desc() *Int32SetDesc {
 	h := newInt32NodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -1579,8 +1579,8 @@ func unlockInt32Desc(preds [maxLevel]*int32NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Int32SetDesc) Add(value int32) bool {
@@ -1653,7 +1653,7 @@ func (s *Int32SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Int32SetDesc) Contains(value int32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -1750,7 +1750,7 @@ func (s *Int32SetDesc) Range(f func(value int32) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Int32SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -1805,7 +1805,7 @@ func (n *int16Node) equal(value int16) bool {
 	return n.value == value
 }
 
-// NewInt16 return an empty int16 skip set in ascending order.
+// NewInt16 returns an emptyint16 skip set in ascending order.
 func NewInt16() *Int16Set {
 	h := newInt16Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -1868,8 +1868,8 @@ func unlockInt16(preds [maxLevel]*int16Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Int16Set) Add(value int16) bool {
@@ -1942,7 +1942,7 @@ func (s *Int16Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Int16Set) Contains(value int16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -2039,7 +2039,7 @@ func (s *Int16Set) Range(f func(value int16) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Int16Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -2094,7 +2094,7 @@ func (n *int16NodeDesc) equal(value int16) bool {
 	return n.value == value
 }
 
-// NewInt16Desc return an empty int16 skip set in descending order.
+// NewInt16Desc returns an emptyint16 skip set in descending order.
 func NewInt16Desc() *Int16SetDesc {
 	h := newInt16NodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -2157,8 +2157,8 @@ func unlockInt16Desc(preds [maxLevel]*int16NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Int16SetDesc) Add(value int16) bool {
@@ -2231,7 +2231,7 @@ func (s *Int16SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Int16SetDesc) Contains(value int16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -2328,7 +2328,7 @@ func (s *Int16SetDesc) Range(f func(value int16) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Int16SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -2383,7 +2383,7 @@ func (n *intNode) equal(value int) bool {
 	return n.value == value
 }
 
-// NewInt return an empty int skip set in ascending order.
+// NewInt returns an emptyint skip set in ascending order.
 func NewInt() *IntSet {
 	h := newIntNode(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -2446,8 +2446,8 @@ func unlockInt(preds [maxLevel]*intNode, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *IntSet) Add(value int) bool {
@@ -2520,7 +2520,7 @@ func (s *IntSet) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *IntSet) Contains(value int) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -2617,7 +2617,7 @@ func (s *IntSet) Range(f func(value int) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *IntSet) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -2672,7 +2672,7 @@ func (n *intNodeDesc) equal(value int) bool {
 	return n.value == value
 }
 
-// NewIntDesc return an empty int skip set in descending order.
+// NewIntDesc returns an emptyint skip set in descending order.
 func NewIntDesc() *IntSetDesc {
 	h := newIntNodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -2735,8 +2735,8 @@ func unlockIntDesc(preds [maxLevel]*intNodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *IntSetDesc) Add(value int) bool {
@@ -2809,7 +2809,7 @@ func (s *IntSetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *IntSetDesc) Contains(value int) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -2906,7 +2906,7 @@ func (s *IntSetDesc) Range(f func(value int) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *IntSetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -2961,7 +2961,7 @@ func (n *uint64Node) equal(value uint64) bool {
 	return n.value == value
 }
 
-// NewUint64 return an empty uint64 skip set in ascending order.
+// NewUint64 returns an emptyuint64 skip set in ascending order.
 func NewUint64() *Uint64Set {
 	h := newUuint64Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -3024,8 +3024,8 @@ func unlockUint64(preds [maxLevel]*uint64Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Uint64Set) Add(value uint64) bool {
@@ -3098,7 +3098,7 @@ func (s *Uint64Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Uint64Set) Contains(value uint64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -3195,7 +3195,7 @@ func (s *Uint64Set) Range(f func(value uint64) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Uint64Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -3250,7 +3250,7 @@ func (n *uint64NodeDesc) equal(value uint64) bool {
 	return n.value == value
 }
 
-// NewUint64Desc return an empty uint64 skip set in descending order.
+// NewUint64Desc returns an emptyuint64 skip set in descending order.
 func NewUint64Desc() *Uint64SetDesc {
 	h := newUuint64NodeDescDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -3313,8 +3313,8 @@ func unlockUint64Desc(preds [maxLevel]*uint64NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Uint64SetDesc) Add(value uint64) bool {
@@ -3387,7 +3387,7 @@ func (s *Uint64SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Uint64SetDesc) Contains(value uint64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -3484,7 +3484,7 @@ func (s *Uint64SetDesc) Range(f func(value uint64) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Uint64SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -3539,7 +3539,7 @@ func (n *uint32Node) equal(value uint32) bool {
 	return n.value == value
 }
 
-// NewUint32 return an empty uint32 skip set in ascending order.
+// NewUint32 returns an emptyuint32 skip set in ascending order.
 func NewUint32() *Uint32Set {
 	h := newUint32Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -3602,8 +3602,8 @@ func unlockUint32(preds [maxLevel]*uint32Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Uint32Set) Add(value uint32) bool {
@@ -3676,7 +3676,7 @@ func (s *Uint32Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Uint32Set) Contains(value uint32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -3773,7 +3773,7 @@ func (s *Uint32Set) Range(f func(value uint32) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Uint32Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -3828,7 +3828,7 @@ func (n *uint32NodeDesc) equal(value uint32) bool {
 	return n.value == value
 }
 
-// NewUint32Desc return an empty uint32 skip set in descending order.
+// NewUint32Desc returns an emptyuint32 skip set in descending order.
 func NewUint32Desc() *Uint32SetDesc {
 	h := newUint32NodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -3891,8 +3891,8 @@ func unlockUint32Desc(preds [maxLevel]*uint32NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Uint32SetDesc) Add(value uint32) bool {
@@ -3965,7 +3965,7 @@ func (s *Uint32SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Uint32SetDesc) Contains(value uint32) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -4062,7 +4062,7 @@ func (s *Uint32SetDesc) Range(f func(value uint32) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Uint32SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -4117,7 +4117,7 @@ func (n *uint16Node) equal(value uint16) bool {
 	return n.value == value
 }
 
-// NewUint16 return an empty uint16 skip set in ascending order.
+// NewUint16 returns an emptyuint16 skip set in ascending order.
 func NewUint16() *Uint16Set {
 	h := newUint16Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -4180,8 +4180,8 @@ func unlockUint16(preds [maxLevel]*uint16Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Uint16Set) Add(value uint16) bool {
@@ -4254,7 +4254,7 @@ func (s *Uint16Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Uint16Set) Contains(value uint16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -4351,7 +4351,7 @@ func (s *Uint16Set) Range(f func(value uint16) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Uint16Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -4406,7 +4406,7 @@ func (n *uint16NodeDesc) equal(value uint16) bool {
 	return n.value == value
 }
 
-// NewUint16Desc return an empty uint16 skip set in descending order.
+// NewUint16Desc returns an emptyuint16 skip set in descending order.
 func NewUint16Desc() *Uint16SetDesc {
 	h := newUint16NodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -4469,8 +4469,8 @@ func unlockUint16Desc(preds [maxLevel]*uint16NodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Uint16SetDesc) Add(value uint16) bool {
@@ -4543,7 +4543,7 @@ func (s *Uint16SetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Uint16SetDesc) Contains(value uint16) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -4640,7 +4640,7 @@ func (s *Uint16SetDesc) Range(f func(value uint16) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Uint16SetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -4695,7 +4695,7 @@ func (n *uintNode) equal(value uint) bool {
 	return n.value == value
 }
 
-// NewUint return an empty uint skip set in ascending order.
+// NewUint returns an emptyuint skip set in ascending order.
 func NewUint() *UintSet {
 	h := newUintNode(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -4758,8 +4758,8 @@ func unlockUint(preds [maxLevel]*uintNode, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *UintSet) Add(value uint) bool {
@@ -4832,7 +4832,7 @@ func (s *UintSet) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *UintSet) Contains(value uint) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -4929,7 +4929,7 @@ func (s *UintSet) Range(f func(value uint) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *UintSet) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -4984,7 +4984,7 @@ func (n *uintNodeDesc) equal(value uint) bool {
 	return n.value == value
 }
 
-// NewUintDesc return an empty uint skip set in descending order.
+// NewUintDesc returns an emptyuint skip set in descending order.
 func NewUintDesc() *UintSetDesc {
 	h := newUintNodeDesc(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -5047,8 +5047,8 @@ func unlockUintDesc(preds [maxLevel]*uintNodeDesc, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *UintSetDesc) Add(value uint) bool {
@@ -5121,7 +5121,7 @@ func (s *UintSetDesc) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *UintSetDesc) Contains(value uint) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -5218,7 +5218,7 @@ func (s *UintSetDesc) Range(f func(value uint) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *UintSetDesc) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }
@@ -5267,7 +5267,7 @@ func (n *stringNode) atomicStoreNext(i int, node *stringNode) {
 	n.next.atomicStore(i, unsafe.Pointer(node))
 }
 
-// NewString return an empty string skip set.
+// NewString returns an emptystring skip set.
 func NewString() *StringSet {
 	h := newStringNode("", maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -5332,8 +5332,8 @@ func unlockString(preds [maxLevel]*stringNode, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *StringSet) Add(value string) bool {
@@ -5406,7 +5406,7 @@ func (s *StringSet) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *StringSet) Contains(value string) bool {
 	score := hash(value)
 	x := s.header
@@ -5504,7 +5504,7 @@ func (s *StringSet) Range(f func(value string) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *StringSet) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }

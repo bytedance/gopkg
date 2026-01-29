@@ -32,7 +32,7 @@ API Reference
 
 **Constants**
 
-Package metainfo provides serveral string prefixes to denote the kinds of meta information where context is not available (such as when transmiting data through network).
+Package metainfo provides several string prefixes to denote the kinds of meta information where context is not available (such as when transmitting data through network).
 
 Typical codes for business logic should never use prefixes. And frameworks that support metainfo may choose other approaches to achieve the same goal.
 

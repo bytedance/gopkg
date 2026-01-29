@@ -18,7 +18,7 @@ We made two experiments in order to measure the overall performance of the new h
 
 
 ## When to use hashset
-Hashset **doesnt** guarantee concurrent safe. If you do need a concurrent safe set, go for skipset [link] -> https://github.com/bytedance/gopkg/tree/develop/collection/skipset
+Hashset **doesn't** guarantee concurrent safety. If you do need a concurrent safe set, go for skipset [link] -> https://github.com/bytedance/gopkg/tree/develop/collection/skipset
 
 ## Quickstart
 ```go

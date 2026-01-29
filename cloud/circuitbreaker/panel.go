@@ -36,7 +36,7 @@ type sharedTicker struct {
 	panels   map[*panel]struct{}
 }
 
-var tickerMap sync.Map // 共用 ticker
+var tickerMap sync.Map // shared ticker
 
 // NewPanel .
 func NewPanel(changeHandler PanelStateChangeHandler,

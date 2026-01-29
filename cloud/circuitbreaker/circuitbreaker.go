@@ -36,8 +36,8 @@ import "time"
 // | [Open]    | do nothing                 | do nothing              | if cooling timeout, allow; |
 // |           |                            |                         | else reject                |
 // |================================================================================================
-// |           |increase halfopenSuccess,   |                         | if detect timeout, allow;  |
-// |[HalfOpen] |if(halfopenSuccess >=       | become Open             | else reject                |
+// |           |increase halfOpenSuccess,   |                         | if detect timeout, allow;  |
+// |[HalfOpen] |if(halfOpenSuccess >=       | become Open             | else reject                |
 // |           | defaultHalfOpenSuccesses)|                         |                            |
 // |           |     become Closed          |                         |                            |
 // =================================================================================================
@@ -70,7 +70,7 @@ type PanelStateChangeHandler func(key string, oldState, newState State, m Metric
 
 // Options for breaker
 type Options struct {
-	// parameters for metricser
+	// parameters for metricer
 	BucketTime time.Duration // the time each bucket holds
 	BucketNums int32         // the number of buckets the breaker have
 
@@ -97,7 +97,7 @@ const (
 	// bucket time is the time each bucket holds
 	defaultBucketTime = time.Millisecond * 100
 
-	// bucket nums is the number of buckets the metricser has;
+	// bucket nums is the number of buckets the metricer has;
 	// the more buckets you have, the less counters you lose when
 	// the oldest bucket expire;
 	defaultBucketNums = 100

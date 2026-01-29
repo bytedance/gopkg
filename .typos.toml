@@ -1,0 +1,8 @@
+[files]
+extend-exclude = ["go.mod", "go.sum"]
+
+[default.extend-words]
+typ = "typ"   # type
+nd = "nd"     # node
+
+[default.extend-identifiers]

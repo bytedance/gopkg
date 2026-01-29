@@ -38,8 +38,8 @@ func init() {
 	defaultGCPercent = uint32(gogc)
 }
 
-// Tuning sets the threshold of heap which will be respect by gc tuner.
-// When Tuning, the env GOGC will not be take effect.
+// Tuning sets the threshold of heap which will be respected by gc tuner.
+// When Tuning, the env GOGC will not take effect.
 // threshold: disable tuning if threshold == 0
 func Tuning(threshold uint64) {
 	// disable gc tuner if percent is zero

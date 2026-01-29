@@ -86,17 +86,17 @@ func TestChannelDefaultSize(t *testing.T) {
 
 	ch.Input(0)
 	ch.Input(0)
-	var timeouted uint32
+	var timedOut uint32
 	go func() {
 		ch.Input(0) // block
-		atomic.AddUint32(&timeouted, 1)
+		atomic.AddUint32(&timedOut, 1)
 	}()
 	go func() {
 		ch.Input(0) // block
-		atomic.AddUint32(&timeouted, 1)
+		atomic.AddUint32(&timedOut, 1)
 	}()
 	time.Sleep(time.Millisecond * 100)
-	assert.Equal(t, atomic.LoadUint32(&timeouted), uint32(0))
+	assert.Equal(t, atomic.LoadUint32(&timedOut), uint32(0))
 }
 
 func TestChannelClose(t *testing.T) {
