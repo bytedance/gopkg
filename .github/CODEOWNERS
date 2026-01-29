@@ -1,28 +1,28 @@
 # global code owners
-*       @PureWhiteWu @zhangyunhao116 @joway @jayantxie
+*       @PureWhiteWu @JasonChen233 @jayantxie
 
 # cache code owners
-/cache/asynccache @PureWhiteWu @zhangyunhao116
+/cache/asynccache @PureWhiteWu @JasonChen233
 
 # cloud code owners
-/cloud/circuitbreaker @PureWhiteWu @zhangyunhao116
+/cloud/circuitbreaker @PureWhiteWu @JasonChen233
 /cloud/metainfo @xiaost @YangruiEmma @jayantxie
 
 # collection code owners
 /collection/hashset @lyeeeeee @PureWhiteWu
-/collection/skipmap @zhangyunhao116 @PureWhiteWu
-/collection/skipset @zhangyunhao116 @PureWhiteWu
-/collection/zset @SilverRainZ @zhangyunhao116
+/collection/skipmap @JasonChen233 @PureWhiteWu
+/collection/skipset @JasonChen233 @PureWhiteWu
+/collection/zset @JasonChen233
 
 # lang code owners
-/lang/fastrand @zhangyunhao116 @PureWhiteWu
-/lang/mcache @PureWhiteWu @zhangyunhao116
-/lang/syncx @PureWhiteWu @zhangyunhao116
+/lang/fastrand @JasonChen233 @PureWhiteWu
+/lang/mcache @PureWhiteWu @JasonChen233
+/lang/syncx @PureWhiteWu @JasonChen233
 /lang/stringx @kaka19ace
-/lang/channel @joway @jayantxie @ppzqh
+/lang/channel @jayantxie @ppzqh
 
 # util code owners
-/util/gopool @PureWhiteWu @zhangyunhao116
-/util/logger @PureWhiteWu @zhangyunhao116
+/util/gopool @PureWhiteWu @JasonChen233
+/util/logger @PureWhiteWu @JasonChen233
 /util/xxhash3 @lyeeeeee
-/util/gctuner @joway @jayantxie @ppzqh
+/util/gctuner @jayantxie @ppzqh
