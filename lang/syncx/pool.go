@@ -165,7 +165,7 @@ func (p *Pool) pin() (*poolLocal, int) {
 	// In pinSlow we store to local and then to localSize, here we load in opposite order.
 	// Since we've disabled preemption, GC cannot happen in between.
 	// Thus here we must observe local at least as large localSize.
-	// We can observe a newSize/larger local, it is fine (we must observe its zero-initialized-ness).
+	// We can observe a newer/larger local, it is fine (we must observe its zero-initialized-ness).
 	s := atomic.LoadUintptr(&p.localSize) // load-acquire
 	l := p.local                          // load-consume
 	if uintptr(pid) < s {
@@ -198,7 +198,7 @@ func (p *Pool) pinSlow() (*poolLocal, int) {
 	return &local[pid], pid
 }
 
-// GC will follow these rules：
+// GC will follow these rules:
 // 1. Mark the tag `newSize`, if `newSize` exists this time, skip GC.
 // 2. Calculate the current size, mark as `newSize`.
 // 3. if `newSize`  < `oldSize`, skip GC.

@@ -139,9 +139,9 @@ func TestIntSet(t *testing.T) {
 		t.Fatalf("invalid length expected %d, got %d", num, l.length)
 	}
 
-	// Don't contains 0 after concurrent addion.
+	// Don't contains 0 after concurrent addition.
 	if l.Contains(0) {
-		t.Fatal("contains 0 after concurrent addion")
+		t.Fatal("contains 0 after concurrent addition")
 	}
 
 	// Concurrent contains.

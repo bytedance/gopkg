@@ -92,7 +92,7 @@ type sharedTicker struct {
 }
 
 var (
-	// 共用 ticker
+	// shared tickers
 	refreshTickerMap, expireTickerMap sync.Map
 )
 
@@ -169,8 +169,8 @@ func (c *asyncCache) SetDefault(key string, val interface{}) bool {
 }
 
 // Get tries to fetch a value corresponding to the given key from the cache.
-// If error occurs during in the first time fetching, it will be cached until the
-// sequential fetchings triggered by the refresh goroutine succeed.
+// If error occurs during the first time fetching, it will be cached until the
+// sequential fetches triggered by the refresh goroutine succeed.
 func (c *asyncCache) Get(key string) (val interface{}, err error) {
 	var ok bool
 	val, ok = c.data.Load(key)

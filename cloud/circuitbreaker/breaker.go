@@ -42,7 +42,7 @@ type breaker struct {
 	state           State     // State now
 	openTime        time.Time // the time when the breaker become Open recently
 	lastRetryTime   time.Time // last retry time when in HalfOpen State
-	halfopenSuccess int32     // consecutive successes when HalfOpen
+	halfOpenSuccess int32     // consecutive successes when HalfOpen
 	isFixed         bool
 
 	options Options
@@ -119,10 +119,10 @@ func (b *breaker) Succeed() {
 	case HalfOpen:
 		rwx.Unlock()
 		b.rw.Lock()
-		// 双重检查 State，防止执行两次 BreakerStateChangeHandler
+		// double-check State to prevent executing BreakerStateChangeHandler twice
 		if b.State() == HalfOpen {
-			atomic.AddInt32(&b.halfopenSuccess, 1)
-			if atomic.LoadInt32(&b.halfopenSuccess) >= b.options.HalfOpenSuccesses {
+			atomic.AddInt32(&b.halfOpenSuccess, 1)
+			if atomic.LoadInt32(&b.halfOpenSuccess) >= b.options.HalfOpenSuccesses {
 				if b.options.BreakerStateChangeHandler != nil {
 					go b.options.BreakerStateChangeHandler(HalfOpen, Closed, b.metricer)
 				}
@@ -152,7 +152,7 @@ func (b *breaker) error(isTimeout bool, trip TripFunc) {
 	case HalfOpen: // become Open
 		rwx.Unlock()
 		b.rw.Lock()
-		// 双重检查 State，防止执行两次 BreakerStateChangeHandler
+		// double-check State to prevent executing BreakerStateChangeHandler twice
 		if b.State() == HalfOpen {
 			if b.options.BreakerStateChangeHandler != nil {
 				go b.options.BreakerStateChangeHandler(HalfOpen, Open, b.metricer)
@@ -224,7 +224,7 @@ func (b *breaker) isAllowed() bool {
 				go b.options.BreakerStateChangeHandler(Open, HalfOpen, b.metricer)
 			}
 			atomic.StoreInt32((*int32)(&b.state), int32(HalfOpen))
-			atomic.StoreInt32(&b.halfopenSuccess, 0)
+			atomic.StoreInt32(&b.halfOpenSuccess, 0)
 			b.lastRetryTime = now
 			b.rw.Unlock()
 		} else {

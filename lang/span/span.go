@@ -50,7 +50,7 @@ func NewSpanCache(spanSize int) *spanCache {
 }
 
 // Make returns a [:n:n] bytes slice from a cached buffer
-// NOTE: Make will not clear the underlay bytes for performance concern. So caller MUST set every byte before read.
+// NOTE: Make will not clear the underlying bytes for performance concern. So caller MUST set every byte before read.
 func (c *spanCache) Make(n int) []byte {
 	sclass := spanClass(n) - minSpanClass
 	if sclass < 0 || sclass >= len(c.spans) {
@@ -82,7 +82,7 @@ type span struct {
 }
 
 // Make returns a [:n:n] bytes slice from a cached buffer
-// NOTE: Make will not clear the underlay bytes for performance concern. So caller MUST set every byte before read.
+// NOTE: Make will not clear the underlying bytes for performance concern. So caller MUST set every byte before read.
 func (b *span) Make(_n int) []byte {
 	n := uint32(_n)
 	if n >= b.size || !atomic.CompareAndSwapUint32(&b.lock, 0, 1) {

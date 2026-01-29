@@ -75,7 +75,7 @@ type perPWindow struct {
 	buckets []perPBucket // buckets this perPWindow holds
 
 	bucketTime time.Duration // time each perPBucket holds
-	bucketNums int32         // the numbe of buckets
+	bucketNums int32         // the number of buckets
 	inWindow   int32         // the number of buckets in the perPWindow
 
 	allSuccessCounter perPCounter
@@ -211,9 +211,9 @@ func (w *perPWindow) Reset() {
 
 func (w *perPWindow) tick() {
 	w.rw.Lock()
-	// 这一段必须在前面，因为latest可能会覆盖oldest
+	// this must come first because latest may overwrite oldest
 	if w.inWindow == w.bucketNums {
-		// the lastest covered the oldest(latest == oldest)
+		// the latest covered the oldest(latest == oldest)
 		oldBucket := &w.buckets[w.oldest]
 		w.allSuccessCounter.Add(-oldBucket.Successes())
 		atomic.AddInt64(&w.allFailure, -oldBucket.Failures())

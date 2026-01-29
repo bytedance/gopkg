@@ -73,7 +73,7 @@ func (n *int64Node) equal(value int64) bool {
 	return n.value == value
 }
 
-// NewInt64 return an empty int64 skip set in ascending order.
+// NewInt64 returns an empty int64 skip set in ascending order.
 func NewInt64() *Int64Set {
 	h := newInt64Node(0, maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -136,8 +136,8 @@ func unlockInt64(preds [maxLevel]*int64Node, highestLevel int) {
 	}
 }
 
-// Add add the value into skip set, return true if this process insert the value into skip set,
-// return false if this process can't insert this value, because another process has insert the same value.
+// Add adds the value into skip set, returns true if this process inserts the value into skip set,
+// returns false if this process can't insert this value, because another process has inserted the same value.
 //
 // If the value is in the skip set but not fully linked, this process will wait until it is.
 func (s *Int64Set) Add(value int64) bool {
@@ -210,7 +210,7 @@ func (s *Int64Set) randomlevel() int {
 	return level
 }
 
-// Contains check if the value is in the skip set.
+// Contains checks if the value is in the skip set.
 func (s *Int64Set) Contains(value int64) bool {
 	x := s.header
 	for i := int(atomic.LoadInt64(&s.highestLevel)) - 1; i >= 0; i-- {
@@ -307,7 +307,7 @@ func (s *Int64Set) Range(f func(value int64) bool) {
 	}
 }
 
-// Len return the length of this skip set.
+// Len returns the length of this skip set.
 func (s *Int64Set) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }

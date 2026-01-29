@@ -24,9 +24,9 @@ func HasMetaInfo(ctx context.Context) bool {
 	return getNode(ctx) != nil
 }
 
-// SetMetaInfoFromMap retrieves metainfo key-value pairs from the given map and sets then into the context.
+// SetMetaInfoFromMap retrieves metainfo key-value pairs from the given map and sets them into the context.
 // Only those keys with prefixes defined in this module would be used.
-// If the context has been carrying metanifo pairs, they will be merged as a basis.
+// If the context has been carrying metainfo pairs, they will be merged as a basis.
 func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Context {
 	if ctx == nil || len(m) == 0 {
 		return ctx
@@ -67,7 +67,7 @@ func SetMetaInfoFromMap(ctx context.Context, m map[string]string) context.Contex
 		}
 	}
 
-	// return original ctx if no invalid key in map
+	// return original ctx if no valid key in map
 	if (persistent.size() + transient.size() + stale.size()) == 0 {
 		return ctx
 	}
@@ -110,7 +110,7 @@ func newCtxFromMap(ctx context.Context, m map[string]string) context.Context {
 		}
 	}
 
-	// return original ctx if no invalid key in map
+	// return original ctx if no valid key in map
 	if nd.size() == 0 {
 		return ctx
 	}

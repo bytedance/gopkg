@@ -33,7 +33,7 @@ const (
 	lenBD  = len(PrefixBackwardDownstream)
 )
 
-// **Using empty string as key or value is not support.**
+// **Using empty string as key or value is not supported.**
 
 // TransferForward converts transient values to transient-upstream values and filters out original transient-upstream values.
 // It should be used before the context is passing from server to client.
@@ -233,7 +233,7 @@ func getValue(kvs []string, i int) string {
 	return kvs[i*2+1]
 }
 
-// CountPersistentValues counts the length of persisten KV pairs
+// CountPersistentValues counts the length of persistent KV pairs
 func CountPersistentValues(ctx context.Context) int {
 	if n := getNode(ctx); n == nil {
 		return 0

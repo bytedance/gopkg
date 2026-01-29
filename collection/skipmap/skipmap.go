@@ -85,7 +85,7 @@ func (n *int64Node) equal(key int64) bool {
 	return n.key == key
 }
 
-// NewInt64 return an empty int64 skipmap.
+// NewInt64 returns an empty int64 skipmap.
 func NewInt64() *Int64Map {
 	h := newInt64Node(0, "", maxLevel)
 	h.flags.SetTrue(fullyLinked)
@@ -532,7 +532,7 @@ func (s *Int64Map) Range(f func(key int64, value interface{}) bool) {
 	}
 }
 
-// Len return the length of this skipmap.
+// Len returns the length of this skipmap.
 func (s *Int64Map) Len() int {
 	return int(atomic.LoadInt64(&s.length))
 }

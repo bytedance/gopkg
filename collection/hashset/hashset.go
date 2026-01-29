@@ -27,7 +27,7 @@ func NewInt64WithSize(size int) Int64Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Int64Set) Add(value int64) bool {
 	s[value] = struct{}{}
@@ -43,7 +43,7 @@ func (s Int64Set) Contains(value int64) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Int64Set) Remove(value int64) bool {
 	delete(s, value)

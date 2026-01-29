@@ -73,7 +73,7 @@ func (h HTTPHeader) Visit(v func(k, v string)) {
 }
 
 // Set sets the header entries associated with key to the single element value.
-// The key will converted into lowercase as the HTTP/2 protocol requires.
+// The key will be converted into lowercase as the HTTP/2 protocol requires.
 func (h HTTPHeader) Set(key, value string) {
 	h[strings.ToLower(key)] = []string{value}
 }
@@ -111,7 +111,7 @@ func FromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Context {
 		}
 	})
 
-	// return original ctx if no invalid key in http header
+	// return original ctx if no valid metainfo key in http header
 	if (persistent.size() + transient.size() + stale.size()) == 0 {
 		return ctx
 	}
@@ -153,7 +153,7 @@ func newCtxFromHTTPHeader(ctx context.Context, h HTTPHeaderCarrier) context.Cont
 		}
 	})
 
-	// return original ctx if no invalid key in http header
+	// return original ctx if no valid metainfo key in http header
 	if nd.Size() == 0 {
 		return ctx
 	}

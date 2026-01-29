@@ -50,7 +50,7 @@ func (q *PointerQueue) Dequeue() (data unsafe.Pointer, ok bool) {
 			// We don't have next SCQ.
 			return
 		}
-		// cq.next is not empty, subsequent entry will be insert into cq.next instead of cq.
+		// cq.next is not empty, subsequent entry will be inserted into cq.next instead of cq.
 		// So if cq is empty, we can move it into ncqpool.
 		atomic.StoreInt64(&cq.threshold, int64(scqsize*2)-1)
 		data, ok = cq.Dequeue()
@@ -86,7 +86,7 @@ func (q *PointerQueue) Enqueue(data unsafe.Pointer) bool {
 		}
 		ncq := pointerSCQPool.Get().(*pointerSCQ) // create a new queue
 		ncq.Enqueue(data)
-		// Try Add this queue into cq.next.
+		// Try to add this queue into cq.next.
 		if atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&cq.next)), nil, unsafe.Pointer(ncq)) {
 			// Success.
 			// Try move cq.next into tail (we don't need to recheck since other enqueuer will help).

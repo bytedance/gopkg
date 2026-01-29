@@ -330,7 +330,7 @@ func TestGetAllPersistent2(t *testing.T) {
 
 ///////////////////////////////////////////////
 
-func TestNilSafty(t *testing.T) {
+func TestNilSafety(t *testing.T) {
 	assert(t, metainfo.TransferForward(nil) == nil)
 
 	_, tOK := metainfo.GetValue(nil, "any")
