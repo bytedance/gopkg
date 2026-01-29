@@ -171,9 +171,9 @@ func TestSub(t *testing.T) {
 		expected string
 	}
 
-	newTestCase := func(intput string, start, end int, expected string) testData {
+	newTestCase := func(input string, start, end int, expected string) testData {
 		return testData{
-			input:    intput,
+			input:    input,
 			start:    start,
 			end:      end,
 			expected: expected,

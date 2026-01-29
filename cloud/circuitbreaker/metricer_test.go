@@ -89,7 +89,7 @@ func TestMetricser1(t *testing.T) {
 
 // TestMetricser2 tests functions about time
 func TestMetricser2(t *testing.T) {
-	t.Skipf("it's not a stable unit tests since depend time stricly")
+	t.Skipf("it's not a stable unit tests since depend time strictly")
 	p, _ := NewPanel(nil, Options{BucketTime: time.Millisecond * 10, BucketNums: 100})
 	b := p.(*panel).getBreaker("test")
 	m := b.metricer

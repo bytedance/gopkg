@@ -112,7 +112,7 @@ During this period, all IsAllowed() requests will be returned false;
 After cooling, HALFOPEN is entered;
 
 ### Half-open strategy
-During HALFOPEN, the circuit breaker will let a request go every "while", and after a "number" of consecutive successful requests, the circuit breakerr will become CLOSED; if any of them fail, it will become OPEN;
+During HALFOPEN, the circuit breaker will let a request go every "while", and after a "number" of consecutive successful requests, the circuit breaker will become CLOSED; if any of them fail, it will become OPEN;
 
 This process is a gradual process of testing downstream, and opening up;
 

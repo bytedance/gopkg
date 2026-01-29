@@ -32,7 +32,7 @@ type item struct {
 	deadline time.Time
 }
 
-// IsExpired check is item exceed deadline, zero means non-expired
+// IsExpired checks if item exceeds deadline, zero means non-expired
 func (i item) IsExpired() bool {
 	if i.deadline.IsZero() {
 		return false
@@ -80,9 +80,9 @@ func WithTimeoutCallback(timeoutCallback func(interface{})) Option {
 	}
 }
 
-// WithThrottle sets both producerThrottle and consumerThrottle
-// If producerThrottle throttled, it input channel will be blocked(if using blocking mode).
-// If consumerThrottle throttled, it output channel will be blocked.
+// WithThrottle sets both producerThrottle and consumerThrottle.
+// If producerThrottle throttled, the input channel will be blocked (if using blocking mode).
+// If consumerThrottle throttled, the output channel will be blocked.
 func WithThrottle(producerThrottle, consumerThrottle Throttle) Option {
 	return func(c *channel) {
 		if c.producerThrottle == nil {

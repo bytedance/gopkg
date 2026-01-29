@@ -21,7 +21,7 @@ fast-modulo-reduction: https://lemire.me/blog/2016/06/27/a-fast-alternative-to-t
 
 
 
-## Bencmark
+## Benchmark
 
 Go version: go1.15.6 linux/amd64
 

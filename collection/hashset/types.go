@@ -29,7 +29,7 @@ func NewFloat32WithSize(size int) Float32Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Float32Set) Add(value float32) bool {
 	s[value] = struct{}{}
@@ -45,7 +45,7 @@ func (s Float32Set) Contains(value float32) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Float32Set) Remove(value float32) bool {
 	delete(s, value)
@@ -81,7 +81,7 @@ func NewFloat64WithSize(size int) Float64Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Float64Set) Add(value float64) bool {
 	s[value] = struct{}{}
@@ -97,7 +97,7 @@ func (s Float64Set) Contains(value float64) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Float64Set) Remove(value float64) bool {
 	delete(s, value)
@@ -133,7 +133,7 @@ func NewInt32WithSize(size int) Int32Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Int32Set) Add(value int32) bool {
 	s[value] = struct{}{}
@@ -149,7 +149,7 @@ func (s Int32Set) Contains(value int32) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Int32Set) Remove(value int32) bool {
 	delete(s, value)
@@ -185,7 +185,7 @@ func NewInt16WithSize(size int) Int16Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Int16Set) Add(value int16) bool {
 	s[value] = struct{}{}
@@ -201,7 +201,7 @@ func (s Int16Set) Contains(value int16) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Int16Set) Remove(value int16) bool {
 	delete(s, value)
@@ -237,7 +237,7 @@ func NewIntWithSize(size int) IntSet {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s IntSet) Add(value int) bool {
 	s[value] = struct{}{}
@@ -253,7 +253,7 @@ func (s IntSet) Contains(value int) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s IntSet) Remove(value int) bool {
 	delete(s, value)
@@ -289,7 +289,7 @@ func NewUint64WithSize(size int) Uint64Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Uint64Set) Add(value uint64) bool {
 	s[value] = struct{}{}
@@ -305,7 +305,7 @@ func (s Uint64Set) Contains(value uint64) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Uint64Set) Remove(value uint64) bool {
 	delete(s, value)
@@ -341,7 +341,7 @@ func NewUint32WithSize(size int) Uint32Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Uint32Set) Add(value uint32) bool {
 	s[value] = struct{}{}
@@ -357,7 +357,7 @@ func (s Uint32Set) Contains(value uint32) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Uint32Set) Remove(value uint32) bool {
 	delete(s, value)
@@ -393,7 +393,7 @@ func NewUint16WithSize(size int) Uint16Set {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Uint16Set) Add(value uint16) bool {
 	s[value] = struct{}{}
@@ -409,7 +409,7 @@ func (s Uint16Set) Contains(value uint16) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s Uint16Set) Remove(value uint16) bool {
 	delete(s, value)
@@ -445,7 +445,7 @@ func NewUintWithSize(size int) UintSet {
 }
 
 // Add adds the specified element to this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s UintSet) Add(value uint) bool {
 	s[value] = struct{}{}
@@ -461,7 +461,7 @@ func (s UintSet) Contains(value uint) bool {
 }
 
 // Remove removes the specified element from this set
-// Always returns true due to the build-in map doesn't indicate caller whether the given element already exists
+// Always returns true because the built-in map doesn't indicate caller whether the given element already exists
 // Reserves the return type for future extension
 func (s UintSet) Remove(value uint) bool {
 	delete(s, value)

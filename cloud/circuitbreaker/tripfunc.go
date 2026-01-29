@@ -16,7 +16,7 @@ package circuitbreaker
 
 import "time"
 
-// TripFunc is a function called by a breaker when error appear and
+// TripFunc is a function called by a breaker when errors appear and
 // determines whether the breaker should trip.
 type TripFunc func(Metricer) bool
 
@@ -61,7 +61,7 @@ func ConsecutiveTripFuncV2(rate float64, minSamples int64, duration time.Duratio
 		if duration > 0 && m.ConseErrors() >= durationSamples && m.ConseTime() >= duration {
 			return true
 		}
-		// base on consecutive errors
+		// based on consecutive errors
 		if conseErrors > 0 && m.ConseErrors() >= conseErrors {
 			return true
 		}

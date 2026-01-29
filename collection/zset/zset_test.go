@@ -173,13 +173,13 @@ func TestFloat64SetRank_UpdateScore(t *testing.T) {
 	}
 }
 
-// Test whether the ramdom inserted values sorted
+// Test whether the random inserted values sorted
 func TestFloat64SetIsSorted(t *testing.T) {
 	const N = 1000
 	z := NewFloat64()
 	rand.Seed(time.Now().Unix())
 
-	// Test whether the ramdom inserted values sorted
+	// Test whether the random inserted values sorted
 	for i := 0; i < N; i++ {
 		z.Add(fastrand.Float64(), fmt.Sprint(i))
 	}
@@ -639,4 +639,42 @@ func TestInterFloat64_Simple(t *testing.T) {
 
 	z := InterFloat64(z1, z2, z3)
 	assert.Zero(t, z.Len())
+}
+
+func BenchmarkRankAfterDelete(b *testing.B) {
+	for _, size := range []int{1000, 10000} {
+		b.Run(strconv.Itoa(size), func(b *testing.B) {
+			z := NewFloat64()
+			for i := 0; i < size; i++ {
+				z.Add(float64(i), strconv.Itoa(i))
+			}
+			for i := 0; i < size/2; i++ {
+				z.Remove(strconv.Itoa(i * 2))
+			}
+			target := strconv.Itoa(size - 1)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				z.Rank(target)
+			}
+		})
+	}
+}
+
+func BenchmarkGetNodeByRankAfterDelete(b *testing.B) {
+	for _, size := range []int{1000, 10000} {
+		b.Run(strconv.Itoa(size), func(b *testing.B) {
+			z := NewFloat64()
+			for i := 0; i < size; i++ {
+				z.Add(float64(i), strconv.Itoa(i))
+			}
+			for i := 0; i < size/2; i++ {
+				z.Remove(strconv.Itoa(i * 2))
+			}
+			rank := z.Len()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				z.list.GetNodeByRank(rank)
+			}
+		})
+	}
 }

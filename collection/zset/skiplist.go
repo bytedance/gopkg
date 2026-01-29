@@ -97,8 +97,8 @@ func (n *float64ListNode) equal(score float64, value string) bool {
 
 // float64List is a specialized skip list implementation for sorted set.
 //
-// It is almost implement the original
-// algorithm described by William Pugh in " Lists: A Probabilistic
+// It almost implements the original
+// algorithm described by William Pugh in "Skip Lists: A Probabilistic
 // Alternative to Balanced Trees", modified in three ways:
 // a) this implementation allows for repeated scores.
 // b) the comparison is not just by key (our 'score') but by satellite data(?).
@@ -159,7 +159,7 @@ func (l *float64List) Insert(score float64, value string) *float64ListNode {
 		// update --> x --> update.next
 		x.storeNext(i, update[i].loadNext(i))
 		update[i].storeNext(i, x)
-		// update[i].span is splitted to: new update[i].span and x.span
+		// update[i].span is split to: new update[i].span and x.span
 		x.storeSpan(i, update[i].loadSpan(i)-(rank[0]-rank[i]))
 		update[i].storeSpan(i, (rank[0]-rank[i])+1)
 	}
@@ -220,12 +220,12 @@ func (l *float64List) Rank(score float64, value string) int {
 	return 0
 }
 
-// deleteNode is a internal function for deleting node x in O(1) time by giving a
+// deleteNode is an internal function for deleting node x in O(1) time by giving a
 // update position matrix.
 func (l *float64List) deleteNode(x *float64ListNode, update *[maxLevel]*float64ListNode) {
 	for i := 0; i < l.highestLevel; i++ {
 		if update[i].loadNext(i) == x {
-			// Remove x, updaet[i].span = updaet[i].span + x.span - 1 (x removed).
+			// Remove x, update[i].span = update[i].span + x.span - 1 (x removed).
 			next, span := x.loadNextAndSpan(i)
 			span += update[i].loadSpan(i) - 1
 			update[i].storeNextAndSpan(i, next, span)
@@ -239,7 +239,7 @@ func (l *float64List) deleteNode(x *float64ListNode, update *[maxLevel]*float64L
 	} else {
 		l.tail = x.prev
 	}
-	for l.highestLevel > 1 && l.header.loadNext(l.highestLevel-1) != nil {
+	for l.highestLevel > 1 && l.header.loadNext(l.highestLevel-1) == nil {
 		// Clear the pointer and span for safety.
 		l.header.storeNextAndSpan(l.highestLevel-1, nil, 0)
 		l.highestLevel--
@@ -474,7 +474,7 @@ func (l *float64List) LastInRange(min, max float64, opt RangeOpt) *float64ListNo
 	return x
 }
 
-// IsInRange returns whether there is a port of sorted set in given range.
+// IsInRange returns whether there is a part of sorted set in given range.
 func (l *float64List) IsInRange(min, max float64, opt RangeOpt) bool {
 	// Test empty range.
 	if min > max || (min == max && (opt.ExcludeMin || opt.ExcludeMax)) {
