@@ -28,12 +28,12 @@ We depend on the same code(this repo) in our production environment.
 
 ## Releases
 
-`gopkg` recommends users to "live-at-head" (update to the latest commit from the main branch as often as possible).
-We develop at `develop` branch and will only merge to `main` when `develop` is stable.
+`gopkg` recommends using the latest tagged version for stability.
+We develop on the `main` branch and create tagged releases when stable.
 
 ## How To Use
 
-You can use `go get -u github.com/bytedance/gopkg@main` to get or update `gopkg`.
+You can use `go get -u github.com/bytedance/gopkg@latest` to get or update `gopkg`.
 
 ## License
 
