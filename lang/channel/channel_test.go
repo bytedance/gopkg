@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func tlogf(t *testing.T, format string, args ...interface{}) {
+func tlogf(t *testing.T, format string, args ...any) {
 	t.Log(fmt.Sprintf("[%v] %s", time.Now().UTC(), fmt.Sprintf(format, args...)))
 }
 
@@ -45,7 +45,7 @@ func BenchmarkNativeChan(b *testing.B) {
 			continue
 		}
 		b.Run(fmt.Sprintf("Size-[%d]", size), func(b *testing.B) {
-			ch := make(chan interface{}, size)
+			ch := make(chan any, size)
 			b.RunParallel(func(pb *testing.PB) {
 				n := 0
 				for pb.Next() {
@@ -430,7 +430,7 @@ func TestFastRecoverConsumer(t *testing.T) {
 	ch := New(
 		WithNonBlock(),
 		WithTimeout(timeout),
-		WithTimeoutCallback(func(i interface{}) {
+		WithTimeoutCallback(func(i any) {
 			atomic.AddInt32(&aborted, 1)
 		}),
 	)

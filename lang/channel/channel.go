@@ -29,7 +29,7 @@ const (
 )
 
 type item struct {
-	value    interface{}
+	value    any
 	deadline time.Time
 }
 
@@ -75,7 +75,7 @@ func WithTimeout(timeout time.Duration) Option {
 }
 
 // WithTimeoutCallback sets callback function when item hit timeout.
-func WithTimeoutCallback(timeoutCallback func(interface{})) Option {
+func WithTimeoutCallback(timeoutCallback func(any)) Option {
 	return func(c *channel) {
 		c.timeoutCallback = timeoutCallback
 	}
@@ -152,9 +152,9 @@ var _ Channel = (*channel)(nil)
 // Channel is a safe and feature-rich alternative for Go chan struct
 type Channel interface {
 	// Input send value to Output channel. If channel is closed, do nothing and will not panic.
-	Input(v interface{})
+	Input(v any)
 	// Output return a read-only native chan for consumer.
-	Output() <-chan interface{}
+	Output() <-chan any
 	// Len return the count of un-consumed items.
 	Len() int
 	// Stats return the produced and consumed count.
@@ -172,10 +172,10 @@ type channelWrapper struct {
 type channel struct {
 	size             int
 	state            int32
-	consumer         chan interface{}
+	consumer         chan any
 	nonblock         bool // non blocking mode
 	timeout          time.Duration
-	timeoutCallback  func(interface{})
+	timeoutCallback  func(any)
 	producerThrottle Throttle
 	consumerThrottle Throttle
 	throttleWindow   time.Duration
@@ -197,7 +197,7 @@ func New(opts ...Option) Channel {
 	for _, opt := range opts {
 		opt(c)
 	}
-	c.consumer = make(chan interface{})
+	c.consumer = make(chan any)
 	c.buffer = list.New[item]()
 	go c.consume()
 
@@ -225,7 +225,7 @@ func (c *channel) isClosed() bool {
 	return atomic.LoadInt32(&c.state) < 0
 }
 
-func (c *channel) Input(v interface{}) {
+func (c *channel) Input(v any) {
 	if c.isClosed() {
 		return
 	}
@@ -264,7 +264,7 @@ func (c *channel) Input(v interface{}) {
 	c.bufferLock.Unlock()
 }
 
-func (c *channel) Output() <-chan interface{} {
+func (c *channel) Output() <-chan any {
 	return c.consumer
 }
 
