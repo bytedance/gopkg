@@ -15,11 +15,12 @@
 package channel
 
 import (
-	"container/list"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bytedance/gg/collection/list"
 )
 
 const (
@@ -146,9 +147,7 @@ func WithRateThrottle(produceRate, consumeRate int) Option {
 	})
 }
 
-var (
-	_ Channel = (*channel)(nil)
-)
+var _ Channel = (*channel)(nil)
 
 // Channel is a safe and feature-rich alternative for Go chan struct
 type Channel interface {
@@ -184,7 +183,7 @@ type channel struct {
 	produced uint64 // item already been insert into buffer
 	consumed uint64 // item already been sent into Output chan
 	// buffer
-	buffer     *list.List // TODO: use high perf queue to reduce GC here
+	buffer     *list.List[item] // TODO: use high perf queue to reduce GC here
 	bufferCond *sync.Cond
 	bufferLock sync.Mutex
 }
@@ -199,7 +198,7 @@ func New(opts ...Option) Channel {
 		opt(c)
 	}
 	c.consumer = make(chan interface{})
-	c.buffer = list.New()
+	c.buffer = list.New[item]()
 	go c.consume()
 
 	// register finalizer for wrapper of channel
@@ -352,6 +351,6 @@ func (c *channel) dequeueBuffer() (it item, ok bool) {
 	}
 	c.buffer.Remove(bi)
 
-	it = bi.Value.(item)
+	it = bi.Value
 	return it, true
 }
