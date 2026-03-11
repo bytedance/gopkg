@@ -20,7 +20,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/bytedance/gopkg/internal/assert"
 )
 
 func TestFinalizer(t *testing.T) {
@@ -29,7 +29,6 @@ func TestFinalizer(t *testing.T) {
 	defer debug.SetGCPercent(100)
 
 	maxCount := int32(16)
-	is := assert.New(t)
 	var count int32
 	f := newFinalizer(func() {
 		n := atomic.AddInt32(&count, 1)
@@ -40,12 +39,12 @@ func TestFinalizer(t *testing.T) {
 	for atomic.LoadInt32(&count) < maxCount {
 		runtime.GC()
 	}
-	is.Nil(f.ref)
+	assert.Nil(t, f.ref)
 	f.stop()
 	// when f stopped, finalizer callback will not be called
 	lastCount := atomic.LoadInt32(&count)
 	for i := 0; i < 10; i++ {
 		runtime.GC()
-		is.Equal(lastCount, atomic.LoadInt32(&count))
+		assert.Equal(t, lastCount, atomic.LoadInt32(&count))
 	}
 }

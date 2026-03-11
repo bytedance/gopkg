@@ -20,7 +20,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/bytedance/gopkg/internal/assert"
 )
 
 func TestPad(t *testing.T) {
@@ -90,49 +90,44 @@ func TestPad(t *testing.T) {
 		},
 	}
 
-	is := assert.New(t)
 	for _, testCase := range testCases {
-		is.Equal(testCase.leftExpected, PadLeftChar(testCase.input, testCase.size, testCase.padChar))
-		is.Equal(testCase.leftExpectedSpace, PadLeftSpace(testCase.input, testCase.size))
+		assert.Equal(t, testCase.leftExpected, PadLeftChar(testCase.input, testCase.size, testCase.padChar))
+		assert.Equal(t, testCase.leftExpectedSpace, PadLeftSpace(testCase.input, testCase.size))
 
-		is.Equal(testCase.rightExpected, PadRightChar(testCase.input, testCase.size, testCase.padChar))
-		is.Equal(testCase.rightExpectedSpace, PadRightSpace(testCase.input, testCase.size))
+		assert.Equal(t, testCase.rightExpected, PadRightChar(testCase.input, testCase.size, testCase.padChar))
+		assert.Equal(t, testCase.rightExpectedSpace, PadRightSpace(testCase.input, testCase.size))
 
-		is.Equal(testCase.centerExpected, PadCenterChar(testCase.input, testCase.size, testCase.padChar))
-		is.Equal(testCase.centerExpectedSpace, PadCenterSpace(testCase.input, testCase.size))
+		assert.Equal(t, testCase.centerExpected, PadCenterChar(testCase.input, testCase.size, testCase.padChar))
+		assert.Equal(t, testCase.centerExpectedSpace, PadCenterSpace(testCase.input, testCase.size))
 	}
 }
 
 func TestRemove(t *testing.T) {
-	is := assert.New(t)
-	is.Equal("", RemoveChar("", 'h'))
-	is.Equal("z英文un排", RemoveChar("zh英文hunh排", 'h'))
-	is.Equal("zh英hun排", RemoveChar("zh英文hun文排", '文'))
+	assert.Equal(t, "", RemoveChar("", 'h'))
+	assert.Equal(t, "z英文un排", RemoveChar("zh英文hunh排", 'h'))
+	assert.Equal(t, "zh英hun排", RemoveChar("zh英文hun文排", '文'))
 
-	is.Equal("", RemoveString("", "文hun"))
-	is.Equal("zh英文hun排", RemoveString("zh英文hun排", ""))
-	is.Equal("zh英排", RemoveString("zh英文hun排", "文hun"))
-	is.Equal("zh英文hun排", RemoveString("zh英文hun排", ""))
+	assert.Equal(t, "", RemoveString("", "文hun"))
+	assert.Equal(t, "zh英文hun排", RemoveString("zh英文hun排", ""))
+	assert.Equal(t, "zh英排", RemoveString("zh英文hun排", "文hun"))
+	assert.Equal(t, "zh英文hun排", RemoveString("zh英文hun排", ""))
 }
 
 func TestRepeat(t *testing.T) {
-	is := assert.New(t)
-	is.Equal("", RepeatChar('-', 0))
-	is.Equal("----", RepeatChar('-', 4))
-	is.Equal("   ", RepeatChar(' ', 3))
+	assert.Equal(t, "", RepeatChar('-', 0))
+	assert.Equal(t, "----", RepeatChar('-', 4))
+	assert.Equal(t, "   ", RepeatChar(' ', 3))
 }
 
 func TestRotate(t *testing.T) {
-	is := assert.New(t)
+	assert.Equal(t, "", Rotate("", 2))
 
-	is.Equal("", Rotate("", 2))
+	assert.Equal(t, "abc", Rotate("abc", 0))
+	assert.Equal(t, "abc", Rotate("abc", 3))
+	assert.Equal(t, "abc", Rotate("abc", 6))
 
-	is.Equal("abc", Rotate("abc", 0))
-	is.Equal("abc", Rotate("abc", 3))
-	is.Equal("abc", Rotate("abc", 6))
-
-	is.Equal("cab", Rotate("abc", 1))
-	is.Equal("bca", Rotate("abc", -1))
+	assert.Equal(t, "cab", Rotate("abc", 1))
+	assert.Equal(t, "bca", Rotate("abc", -1))
 }
 
 func TestReverse(t *testing.T) {
@@ -149,7 +144,9 @@ func TestReverse(t *testing.T) {
 	}
 	for _, test := range tests {
 		output := MustReverse(test.input)
-		assert.Equalf(t, test.expected, output, "Test case %s is not successful\n", test.input)
+		if test.expected != output {
+			t.Fatalf("test case %s is not successful: expected %#v, got %#v", test.input, test.expected, output)
+		}
 	}
 
 	assert.Equal(t, MustReverse(""), "")
@@ -193,23 +190,19 @@ func TestSub(t *testing.T) {
 		newTestCase("zh英文hun排", -10, -90, ""),
 	}
 
-	is := assert.New(t)
 	for _, testCase := range testCases {
-		is.Equal(testCase.expected, Sub(testCase.input, testCase.start, testCase.end))
+		assert.Equal(t, testCase.expected, Sub(testCase.input, testCase.start, testCase.end))
 	}
 }
 
 func TestContainsAnySubstrings(t *testing.T) {
-	is := assert.New(t)
-	is.True(ContainsAnySubstrings("abcdefg", []string{"a", "b"}))
-	is.True(ContainsAnySubstrings("abcdefg", []string{"a", "z"}))
-	is.False(ContainsAnySubstrings("abcdefg", []string{"ac", "z"}))
-	is.False(ContainsAnySubstrings("abcdefg", []string{"x", "z"}))
+	assert.True(t, ContainsAnySubstrings("abcdefg", []string{"a", "b"}))
+	assert.True(t, ContainsAnySubstrings("abcdefg", []string{"a", "z"}))
+	assert.False(t, ContainsAnySubstrings("abcdefg", []string{"ac", "z"}))
+	assert.False(t, ContainsAnySubstrings("abcdefg", []string{"x", "z"}))
 }
 
 func TestShuffle(t *testing.T) {
-	is := assert.New(t)
-
 	shuffleAndSort := func(str string) string {
 		s := Shuffle(str)
 		slice := sort.StringSlice(strings.Split(s, ""))
@@ -225,6 +218,6 @@ func TestShuffle(t *testing.T) {
 	}
 	for input, expected := range strMap {
 		actual := shuffleAndSort(input)
-		is.Equal(expected, actual)
+		assert.Equal(t, expected, actual)
 	}
 }

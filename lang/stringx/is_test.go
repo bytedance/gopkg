@@ -17,29 +17,27 @@ package stringx
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/bytedance/gopkg/internal/assert"
 )
 
 func TestIs(t *testing.T) {
-	is := assert.New(t)
+	assert.False(t, IsNumeric(""))
+	assert.False(t, IsNumeric("  "))
+	assert.False(t, IsNumeric(" bob "))
+	assert.True(t, IsNumeric("123"))
 
-	is.False(IsNumeric(""))
-	is.False(IsNumeric("  "))
-	is.False(IsNumeric(" bob "))
-	is.True(IsNumeric("123"))
+	assert.False(t, IsAlpha(""))
+	assert.False(t, IsAlpha(" "))
+	assert.False(t, IsAlpha(" Voa "))
+	assert.False(t, IsAlpha("123"))
+	assert.True(t, IsAlpha("Voa"))
+	assert.True(t, IsAlpha("bròwn"))
 
-	is.False(IsAlpha(""))
-	is.False(IsAlpha(" "))
-	is.False(IsAlpha(" Voa "))
-	is.False(IsAlpha("123"))
-	is.True(IsAlpha("Voa"))
-	is.True(IsAlpha("bròwn"))
-
-	is.False(IsAlphanumeric(""))
-	is.False(IsAlphanumeric(" "))
-	is.False(IsAlphanumeric(" Voa "))
-	is.True(IsAlphanumeric("Voa"))
-	is.True(IsAlphanumeric("123"))
-	is.True(IsAlphanumeric("v123oa"))
-	is.False(IsAlphanumeric("v123oa,"))
+	assert.False(t, IsAlphanumeric(""))
+	assert.False(t, IsAlphanumeric(" "))
+	assert.False(t, IsAlphanumeric(" Voa "))
+	assert.True(t, IsAlphanumeric("Voa"))
+	assert.True(t, IsAlphanumeric("123"))
+	assert.True(t, IsAlphanumeric("v123oa"))
+	assert.False(t, IsAlphanumeric("v123oa,"))
 }

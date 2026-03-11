@@ -1,4 +1,4 @@
-// Copyright 2021 ByteDance Inc.
+// Copyright 2025 ByteDance Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mcache
+package assert
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/bytedance/gopkg/internal/assert"
-)
+type nilTestStruct struct{}
 
-func TestBsr(t *testing.T) {
-	assert.Equal(t, bsr(4), 2)
-	assert.Equal(t, bsr(24), 4)
-	assert.Equal(t, bsr((1<<10)-1), 9)
-	assert.Equal(t, bsr((1<<30)+(1<<19)+(1<<16)+(1<<1)), 30)
+func TestEqual(t *testing.T) {
+	Equal(t, []int{1, 2}, []int{1, 2})
 }
 
-func BenchmarkBsr(b *testing.B) {
-	num := (1 << 30) + (1 << 19) + (1 << 16) + (1 << 1)
+func TestNotEqual(t *testing.T) {
+	NotEqual(t, []int{1, 2}, []int{2, 1})
+}
 
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = bsr(num + i)
-	}
+func TestTrue(t *testing.T) {
+	True(t, true)
+}
+
+func TestFalse(t *testing.T) {
+	False(t, false)
+}
+
+func TestNil(t *testing.T) {
+	var p *nilTestStruct
+	Nil(t, p)
+
+	var m map[string]int
+	Nil(t, m)
+
+	var s []int
+	Nil(t, s)
+
+	var i interface{} = p
+	Nil(t, i)
 }

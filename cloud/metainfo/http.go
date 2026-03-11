@@ -18,7 +18,7 @@ import (
 	"context"
 	"strings"
 
-	"golang.org/x/net/http/httpguts"
+	"github.com/bytedance/gopkg/internal/httpguts"
 )
 
 // HTTP header prefixes.
