@@ -1,12 +1,12 @@
 # global code owners
-*       @PureWhiteWu @JasonChen233 @jayantxie
+*       @PureWhiteWu @JasonChen233 @xiaost
 
 # cache code owners
 /cache/asynccache @PureWhiteWu @JasonChen233
 
 # cloud code owners
 /cloud/circuitbreaker @PureWhiteWu @JasonChen233
-/cloud/metainfo @xiaost @YangruiEmma @jayantxie
+/cloud/metainfo @xiaost @YangruiEmma
 
 # collection code owners
 /collection/hashset @lyeeeeee @PureWhiteWu
@@ -19,10 +19,10 @@
 /lang/mcache @PureWhiteWu @JasonChen233
 /lang/syncx @PureWhiteWu @JasonChen233
 /lang/stringx @kaka19ace
-/lang/channel @jayantxie @ppzqh
+/lang/channel @xiaost @ppzqh
 
 # util code owners
 /util/gopool @PureWhiteWu @JasonChen233
 /util/logger @PureWhiteWu @JasonChen233
 /util/xxhash3 @lyeeeeee
-/util/gctuner @jayantxie @ppzqh
+/util/gctuner @xiaost @ppzqh
