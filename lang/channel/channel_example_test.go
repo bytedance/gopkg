@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/bytedance/gopkg/internal/assert"
 )
 
 type request struct {

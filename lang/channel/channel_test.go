@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/bytedance/gopkg/internal/assert"
 )
 
 func tlogf(t *testing.T, format string, args ...interface{}) {
@@ -479,7 +479,7 @@ func TestChannelCloseThenConsume(t *testing.T) {
 	ch.Close()
 	for i := 0; i < size; i++ {
 		x := <-ch.Output()
-		assert.NotNil(t, x)
+		assert.True(t, x != nil)
 		n := x.(int)
 		assert.Equal(t, n, x)
 	}

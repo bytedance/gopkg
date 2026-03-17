@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bytedance/gopkg/internal/assert"
 	"github.com/bytedance/gopkg/lang/fastrand"
-	"github.com/stretchr/testify/assert"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -39,7 +39,7 @@ func randString(prefix string) string {
 
 func TestFloat64Set(t *testing.T) {
 	z := NewFloat64()
-	assert.Zero(t, z.Len())
+	assert.True(t, z.Len() == 0)
 }
 
 func TestFloat64SetAdd(t *testing.T) {
@@ -156,7 +156,7 @@ func TestFloat64SetRank_UpdateScore(t *testing.T) {
 	for _, v := range vs {
 		r := z.Rank(v)
 		assert.NotEqual(t, -1, r)
-		assert.Greater(t, z.Len(), r)
+		assert.True(t, z.Len() > r)
 
 		// verify rank by traversing level 0
 		actualRank := 0
@@ -237,11 +237,16 @@ func testInternalSpan(t *testing.T, z *Float64Set) {
 				assert.NotEqual(t, -1, toRank)
 
 				// span = to.rank - from.rank
-				assert.Equalf(t, span, toRank-fromRank, "from %q (score: , rank: %d) to %q (score: %d, rank: %d), expect span: %d, actual: %d",
-					from, fromScore, fromRank, to, toScore, toRank, span, toRank-fromRank)
+				if span != toRank-fromRank {
+					t.Fatalf("from %q (score: %v, rank: %d) to %q (score: %v, rank: %d), expect span: %d, actual: %d",
+						from, fromScore, fromRank, to, toScore, toRank, span, toRank-fromRank)
+				}
 			} else { // from -> nil
 				// span = skiplist.len - from.rank
-				assert.Equalf(t, l.length-fromRank, x.loadSpan(i), "%q (score: , rank: %d)", from, fromScore, fromRank)
+				if l.length-fromRank != x.loadSpan(i) {
+					t.Fatalf("%q (score: %v, rank: %d): expect span %d, actual %d",
+						from, fromScore, fromRank, l.length-fromRank, x.loadSpan(i))
+				}
 			}
 		}
 	}
@@ -408,8 +413,8 @@ func testFloat64SetRangeByScore(t *testing.T, rev bool) {
 	}
 	var prev *float64
 	for _, n := range ns {
-		assert.LessOrEqual(t, min, n.Score)
-		assert.GreaterOrEqual(t, max, n.Score)
+		assert.True(t, min <= n.Score)
+		assert.True(t, max >= n.Score)
 		if prev != nil {
 			if rev {
 				assert.True(t, *prev >= n.Score)
@@ -598,7 +603,7 @@ func TestUnionFloat64(t *testing.T) {
 
 func TestUnionFloat64_Empty(t *testing.T) {
 	z := UnionFloat64()
-	assert.Zero(t, z.Len())
+	assert.True(t, z.Len() == 0)
 }
 
 func TestInterFloat64(t *testing.T) {
@@ -626,7 +631,7 @@ func TestInterFloat64(t *testing.T) {
 
 func TestInterFloat64_Empty(t *testing.T) {
 	z := InterFloat64()
-	assert.Zero(t, z.Len())
+	assert.True(t, z.Len() == 0)
 }
 
 func TestInterFloat64_Simple(t *testing.T) {
@@ -638,7 +643,7 @@ func TestInterFloat64_Simple(t *testing.T) {
 	z3.Add(0, "2")
 
 	z := InterFloat64(z1, z2, z3)
-	assert.Zero(t, z.Len())
+	assert.True(t, z.Len() == 0)
 }
 
 func BenchmarkRankAfterDelete(b *testing.B) {

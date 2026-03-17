@@ -19,7 +19,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/bytedance/gopkg/internal/assert"
 )
 
 func TestSpanClass(t *testing.T) {
