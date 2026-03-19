@@ -225,6 +225,20 @@ func DelPersistentValue(ctx context.Context, k string) context.Context {
 	return ctx
 }
 
+// WithoutPersistentValues creates a new ctx without all persistent key/values from the current context, transient values are not affected.
+func WithoutPersistentValues(ctx context.Context) context.Context {
+	if n := getNode(ctx); n != nil {
+		if len(n.persistent) == 0 {
+			return ctx
+		}
+		return withNode(ctx, &node{
+			transient: n.transient,
+			stale:     n.stale,
+		})
+	}
+	return ctx
+}
+
 func getKey(kvs []string, i int) string {
 	return kvs[i*2]
 }
