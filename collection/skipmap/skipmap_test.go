@@ -338,3 +338,97 @@ func TestConcurrentRange(t *testing.T) {
 		}
 	}
 }
+
+// Store can race with LoadAndDelete such that Store writes to a node that is
+// concurrently marked and unlinked, silently losing the value. To detect this,
+// set key=oldValue, then race Store(key, newValue) vs LoadAndDelete(key). If
+// the delete returns oldValue it went first, so the key must still exist with
+// newValue afterward. Finding the key absent means the Store was lost.
+//
+// See: https://github.com/bytedance/gopkg/issues/264
+func TestStoreLoadAndDeleteRace(t *testing.T) {
+	const key = "k"
+	rounds := 100_000
+	if testing.Short() {
+		rounds = 10_000
+	}
+
+	for round := 0; round < rounds; round++ {
+		m := NewString()
+		oldValue := round*2 + 1
+		newValue := round*2 + 2
+
+		m.Store(key, oldValue)
+
+		var wg sync.WaitGroup
+		var delValue interface{}
+		var delLoaded bool
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			m.Store(key, newValue)
+		}()
+		go func() {
+			defer wg.Done()
+			delValue, delLoaded = m.LoadAndDelete(key)
+		}()
+
+		wg.Wait()
+
+		val, exists := m.Load(key)
+
+		// LoadAndDelete observed the old value (linearized before Store),
+		// but the key is absent, meaning the Store's value was lost.
+		if delLoaded && delValue.(int) == oldValue && !exists {
+			t.Fatalf("round %d: Store(%s, %d) lost: LoadAndDelete returned old=%d but key is absent",
+				round, key, newValue, oldValue)
+		}
+
+		// If key exists after the race, it must hold newValue.
+		if exists && val.(int) != newValue {
+			t.Fatalf("round %d: key has value %d, want %d", round, val.(int), newValue)
+		}
+	}
+}
+
+// LoadOrStore can return a value from a node that hasn't been fully linked
+// into the skip list yet. Load checks the fullyLinked flag and rejects such
+// nodes, so it returns nil for a key that LoadOrStore just reported as present.
+// Race 8 goroutines doing LoadOrStore on the same absent key; since nothing
+// deletes the key, every goroutine's follow-up Load must succeed.
+//
+// See: https://github.com/bytedance/gopkg/issues/264
+func TestLoadOrStoreLoadRace(t *testing.T) {
+	const key = "k"
+	rounds := 100_000
+	if testing.Short() {
+		rounds = 10_000
+	}
+
+	for round := 0; round < rounds; round++ {
+		m := NewString()
+
+		var wg sync.WaitGroup
+		var failed int32
+
+		for i := 0; i < 8; i++ {
+			wg.Add(1)
+			go func(v int) {
+				defer wg.Done()
+				m.LoadOrStore(key, v)
+				// No deletes, so the key must be visible.
+				if _, ok := m.Load(key); !ok {
+					atomic.AddInt32(&failed, 1)
+				}
+			}(round*8 + i)
+		}
+
+		wg.Wait()
+
+		if n := atomic.LoadInt32(&failed); n > 0 {
+			t.Fatalf("round %d: Load returned nil %d times after LoadOrStore (no deletes running)",
+				round, n)
+		}
+	}
+}
