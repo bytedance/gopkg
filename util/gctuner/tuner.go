@@ -117,7 +117,6 @@ func (t *tuner) tuning() {
 		return
 	}
 	t.setGCPercent(calcGCPercent(inuse, threshold))
-	return
 }
 
 // threshold = inuse + inuse * (gcPercent / 100)

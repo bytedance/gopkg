@@ -235,9 +235,6 @@ func xxh3Len0To16_128b(xinput unsafe.Pointer, len uint64) [2]uint64 {
 		keyedLow := combinedl ^ bitflipl
 		keyedHigh := combinedh ^ bitfliph
 
-		keyedLow = combinedl ^ bitflipl
-		keyedHigh = combinedh ^ bitfliph
-
 		h128Low64 := xxh64Avalanche(keyedLow)
 		h128High64 := xxh64Avalanche(keyedHigh)
 		return [2]uint64{h128High64, h128Low64}

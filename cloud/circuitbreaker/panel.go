@@ -93,7 +93,7 @@ func (p *panel) getBreaker(key string) *breaker {
 		}
 	}
 	ncb, _ := newBreaker(op)
-	cb, ok = p.breakers.LoadOrStore(key, ncb)
+	cb, _ = p.breakers.LoadOrStore(key, ncb)
 	return cb.(*breaker)
 }
 
