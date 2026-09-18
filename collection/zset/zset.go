@@ -405,8 +405,8 @@ func (z *Float64Set) RemoveRangeByScore(min, max float64) []Float64Node {
 }
 
 func (z *Float64Set) RemoveRangeByScoreWithOpt(min, max float64, opt RangeOpt) []Float64Node {
-	z.mu.RLock()
-	defer z.mu.RUnlock()
+	z.mu.Lock()
+	defer z.mu.Unlock()
 
 	return z.list.DeleteRangeByScore(min, max, opt, z.dict)
 }
