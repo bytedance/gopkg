@@ -373,9 +373,12 @@ func TestChannelProduceRateControl(t *testing.T) {
 	ch := New(
 		WithRateThrottle(produceMaxRate, 0),
 	)
-	defer ch.Close()
 
+	var wg sync.WaitGroup
+	const total = 300
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for c := range ch.Output() {
 			id := c.(int)
 			//tlogf(t, "consumed: %d", id)
@@ -383,30 +386,75 @@ func TestChannelProduceRateControl(t *testing.T) {
 		}
 	}()
 	begin := time.Now()
-	for i := 1; i <= 500; i++ {
+	for i := 1; i <= total; i++ {
 		ch.Input(i)
 	}
+	ch.Close() // when channel closed, ch.Output() should return
+	wg.Wait()
 	cost := time.Now().Sub(begin)
 	tlogf(t, "Cost %dms", cost.Milliseconds())
 }
 
 func TestChannelConsumeRateControl(t *testing.T) {
+	consumeRate := 100
 	ch := New(
-		WithRateThrottle(0, 100),
+		WithRateThrottle(0, consumeRate),
 	)
-	defer ch.Close()
 
+	var wg sync.WaitGroup
+	const total = 300
+	var counter int32
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for c := range ch.Output() {
 			id := c.(int)
 			//tlogf(t, "consumed: %d", id)
-			_ = id
+			if id == 0 {
+				t.Errorf("get zero output")
+			}
+			atomic.AddInt32(&counter, 1)
 		}
 	}()
 	begin := time.Now()
-	for i := 1; i <= 500; i++ {
+	for i := 1; i <= total; i++ {
 		ch.Input(i)
 	}
+	ch.Close() // when channel closed, ch.Output() should return
+	wg.Wait()
+	assert.Equal(t, int32(total), atomic.LoadInt32(&counter))
+	cost := time.Now().Sub(begin)
+	tlogf(t, "Cost %dms", cost.Milliseconds())
+}
+
+func TestChannelProduceAndConsumeRateControl(t *testing.T) {
+	produceRate, consumeRate := 100, 50
+	ch := New(
+		WithRateThrottle(produceRate, consumeRate),
+	)
+
+	var wg sync.WaitGroup
+	const total = 300
+	var counter int32
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for c := range ch.Output() {
+			id := c.(int)
+			//tlogf(t, "consumed: %d", id)
+			if id == 0 {
+				t.Errorf("get zero output")
+			}
+			atomic.AddInt32(&counter, 1)
+		}
+	}()
+	begin := time.Now()
+	for i := 1; i <= total; i++ {
+		ch.Input(i)
+	}
+	ch.Close() // when channel closed, ch.Output() should return
+	wg.Wait()
+	assert.Equal(t, int32(total), atomic.LoadInt32(&counter))
 	cost := time.Now().Sub(begin)
 	tlogf(t, "Cost %dms", cost.Milliseconds())
 }
