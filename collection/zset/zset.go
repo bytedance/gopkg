@@ -405,8 +405,12 @@ func (z *Float64Set) RemoveRangeByScore(min, max float64) []Float64Node {
 }
 
 func (z *Float64Set) RemoveRangeByScoreWithOpt(min, max float64, opt RangeOpt) []Float64Node {
-	z.mu.RLock()
-	defer z.mu.RUnlock()
+	// DeleteRangeByScore mutates both the skip list and z.dict, so this is a
+	// write operation and must take the exclusive lock. Holding RLock let
+	// concurrent callers (and concurrent Add/Remove) mutate the structure at
+	// the same time: a data race that can also corrupt the skip list.
+	z.mu.Lock()
+	defer z.mu.Unlock()
 
 	return z.list.DeleteRangeByScore(min, max, opt, z.dict)
 }
