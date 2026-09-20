@@ -629,6 +629,34 @@ func TestInterFloat64(t *testing.T) {
 	}
 }
 
+func TestFloat64SetRemoveRangeByScore_Concurrent(t *testing.T) {
+	// RemoveRangeByScore/WithOpt mutate the set and must take the write lock;
+	// run under `go test -race` to guard against the RLock data race.
+	z := NewFloat64()
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	for w := 0; w < 4; w++ {
+		wg.Add(1)
+		go func(base int) {
+			defer wg.Done()
+			for i := 0; ; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				z.Add(float64((base+i)%60), "k")
+				_ = z.RemoveRangeByScore(0, 25)
+				_ = z.RemoveRangeByScoreWithOpt(26, 60, RangeOpt{ExcludeMin: true})
+				_ = z.Range(0, -1)
+			}
+		}(w * 7)
+	}
+	time.Sleep(100 * time.Millisecond)
+	close(stop)
+	wg.Wait()
+}
+
 func TestInterFloat64_Empty(t *testing.T) {
 	z := InterFloat64()
 	assert.True(t, z.Len() == 0)
