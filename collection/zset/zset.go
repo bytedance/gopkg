@@ -56,7 +56,14 @@ func UnionFloat64(zs ...*Float64Set) *Float64Set {
 	dest := NewFloat64()
 	for _, z := range zs {
 		for _, n := range z.Range(0, -1) {
-			dest.Add(n.Score, n.Value)
+			// Redis ZUNIONSTORE aggregates scores of a value present in more
+			// than one input set (default aggregate SUM); Add alone would
+			// overwrite the accumulated score with each later set's value.
+			if cur, ok := dest.Score(n.Value); ok {
+				dest.Add(cur+n.Score, n.Value)
+			} else {
+				dest.Add(n.Score, n.Value)
+			}
 		}
 	}
 	return dest
@@ -72,15 +79,21 @@ func InterFloat64(zs ...*Float64Set) *Float64Set {
 		return dest
 	}
 	for _, n := range zs[0].Range(0, -1) {
+		sum := n.Score
 		ok := true
 		for _, z := range zs[1:] {
-			if !z.Contains(n.Value) {
+			score, found := z.Score(n.Value)
+			if !found {
 				ok = false
 				break
 			}
+			sum += score
 		}
 		if ok {
-			dest.Add(n.Score, n.Value)
+			// Redis ZINTERSTORE sums the score across every input set the
+			// value exists in; Add with n.Score alone would keep only the
+			// first set's contribution.
+			dest.Add(sum, n.Value)
 		}
 	}
 	return dest
