@@ -601,6 +601,44 @@ func TestUnionFloat64(t *testing.T) {
 	}
 }
 
+func TestUnionInterFloat64_SumAcrossSets(t *testing.T) {
+	// Both functions document "the resulting score of a value is the sum of
+	// its scores in the sorted sets where it exists" (Redis SUM aggregation).
+	// A value present in several inputs must have its scores added; Add alone
+	// overwrites, so overlapping keys must be explicitly accumulated.
+	z1 := NewFloat64()
+	z1.Add(1, "k")
+	z1.Add(5, "only1")
+	z2 := NewFloat64()
+	z2.Add(10, "k")
+	z2.Add(7, "only2")
+	z3 := NewFloat64()
+	z3.Add(100, "k")
+
+	// union: k in all three -> 1+10+100; non-overlapping keep own score
+	u := UnionFloat64(z1, z2, z3)
+	s, ok := u.Score("k")
+	assert.True(t, ok)
+	assert.Equal(t, 111.0, s)
+	s, _ = u.Score("only1")
+	assert.Equal(t, 5.0, s)
+	s, _ = u.Score("only2")
+	assert.Equal(t, 7.0, s)
+
+	// inter: k present in all three -> sum; a value missing from one is gone
+	i := InterFloat64(z1, z2, z3)
+	s, ok = i.Score("k")
+	assert.True(t, ok)
+	assert.Equal(t, 111.0, s)
+	assert.False(t, i.Contains("only1"))
+
+	// pairwise intersection sums the two contributing sets
+	i12 := InterFloat64(z1, z2)
+	s, ok = i12.Score("k")
+	assert.True(t, ok)
+	assert.Equal(t, 11.0, s)
+}
+
 func TestUnionFloat64_Empty(t *testing.T) {
 	z := UnionFloat64()
 	assert.True(t, z.Len() == 0)
