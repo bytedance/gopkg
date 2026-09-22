@@ -390,6 +390,36 @@ func TestChannelProduceRateControl(t *testing.T) {
 	tlogf(t, "Cost %dms", cost.Milliseconds())
 }
 
+func TestChannelRateThrottleConcurrentProducers(t *testing.T) {
+	// Regression: WithRateThrottle's producer throttle closure updates its
+	// begin/ts state without synchronization, but Input (and thus the producer
+	// throttle) may be called from many goroutines concurrently. This test
+	// drives 8 concurrent producers through a rate throttle and must be clean
+	// under `go test -race`.
+	ch := New(
+		WithRateThrottle(500, 500),
+		WithThrottleWindow(time.Millisecond),
+	)
+	defer ch.Close()
+
+	go func() {
+		for range ch.Output() {
+		}
+	}()
+
+	var wg sync.WaitGroup
+	for p := 0; p < 8; p++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 3000; i++ {
+				ch.Input(i)
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func TestChannelConsumeRateControl(t *testing.T) {
 	ch := New(
 		WithRateThrottle(0, 100),

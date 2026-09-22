@@ -114,14 +114,20 @@ func WithThrottleWindow(window time.Duration) Option {
 // WithRateThrottle is a helper function to control producer and consumer process rate.
 // produceRate and consumeRate mean how many item could be processed in one second, aka TPS.
 func WithRateThrottle(produceRate, consumeRate int) Option {
-	// throttle function will be called sequentially
 	producedMax := uint64(produceRate)
 	consumedMax := uint64(consumeRate)
+	// The producer throttle is invoked from Input, which may be called
+	// concurrently by multiple producer goroutines, so the begin/ts state it
+	// reads and updates must be guarded. The consumer throttle runs only from
+	// the single consume goroutine but is guarded the same way for symmetry.
+	var producedMu, consumedMu sync.Mutex
 	var producedBegin, consumedBegin uint64
 	var producedTS, consumedTS int64
 	return WithThrottle(func(c Channel) bool {
 		ts := time.Now().Unix() // in second
 		produced, _ := c.Stats()
+		producedMu.Lock()
+		defer producedMu.Unlock()
 		if producedTS != ts {
 			// move to a new second, so store the current process as beginning value
 			producedBegin = produced
@@ -134,6 +140,8 @@ func WithRateThrottle(produceRate, consumeRate int) Option {
 	}, func(c Channel) bool {
 		ts := time.Now().Unix() // in second
 		_, consumed := c.Stats()
+		consumedMu.Lock()
+		defer consumedMu.Unlock()
 		if consumedTS != ts {
 			// move to a new second, so store the current process as beginning value
 			consumedBegin = consumed
