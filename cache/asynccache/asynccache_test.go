@@ -16,6 +16,7 @@ package asynccache
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -397,4 +398,54 @@ func BenchmarkRefreshParallel(b *testing.B) {
 			c.refresh()
 		}
 	})
+}
+
+func TestDeleteHandlerReceivesCachedValue(t *testing.T) {
+	for _, path := range []string{"DeleteIf", "expire"} {
+		t.Run(path, func(t *testing.T) {
+			for _, value := range []interface{}{"cached value", &struct{ N int }{42}, nil} {
+				t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
+					type deletion struct {
+						key   string
+						value interface{}
+					}
+					deleted := make(chan deletion, 2)
+					c := &asyncCache{opt: Options{DeleteHandler: func(key string, oldData interface{}) {
+						deleted <- deletion{key, oldData}
+					}}}
+					removed := &entry{}
+					removed.Store(value, nil)
+					c.data.Store("removed", removed)
+					retained := &entry{}
+					retained.Store("retained value", nil)
+					c.data.Store("retained", retained)
+
+					if path == "DeleteIf" {
+						c.DeleteIf(func(key string) bool { return key == "removed" })
+					} else {
+						c.expire()
+						select {
+						case event := <-deleted:
+							t.Fatalf("first expiration unexpectedly deleted %q", event.key)
+						default:
+						}
+						retained.Touch()
+						c.expire()
+					}
+
+					select {
+					case event := <-deleted:
+						assert.Equal(t, "removed", event.key)
+						assert.Equal(t, value, event.value)
+					case <-time.After(5 * time.Second):
+						t.Fatal("delete handler was not called")
+					}
+					_, exists := c.data.Load("removed")
+					assert.False(t, exists)
+					_, exists = c.data.Load("retained")
+					assert.True(t, exists)
+				})
+			}
+		})
+	}
 }

@@ -35,6 +35,7 @@ type Options struct {
 
 	ErrorHandler  func(key string, err error)
 	ChangeHandler func(key string, oldData, newData interface{})
+	// DeleteHandler runs asynchronously with the last cached value, which may be nil.
 	DeleteHandler func(key string, oldData interface{})
 
 	IsSame     func(key string, oldData, newData interface{}) bool
@@ -240,7 +241,7 @@ func (c *asyncCache) DeleteIf(shouldDelete func(key string) bool) {
 		s := key.(string)
 		if shouldDelete(s) {
 			if c.opt.DeleteHandler != nil {
-				go c.opt.DeleteHandler(s, value)
+				go c.opt.DeleteHandler(s, value.(*entry).val.Load())
 			}
 			c.data.Delete(key)
 		}
@@ -321,7 +322,7 @@ func (c *asyncCache) expire() {
 		}
 		if !atomic.CompareAndSwapInt32(&e.expire, 0, 1) {
 			if c.opt.DeleteHandler != nil {
-				go c.opt.DeleteHandler(k, value)
+				go c.opt.DeleteHandler(k, e.val.Load())
 			}
 			c.data.Delete(key)
 		}
