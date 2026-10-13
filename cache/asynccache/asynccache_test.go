@@ -17,6 +17,8 @@ package asynccache
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,32 +26,78 @@ import (
 )
 
 func TestGetOK(t *testing.T) {
-	var key, ret = "key", "ret"
+	var key = "key"
+	// ret is read by the Fetcher from the background refresh goroutine and
+	// updated by the test body, so it must be accessed atomically.
+	var ret atomic.Value
+	ret.Store("ret")
 	op := Options{
 		RefreshDuration: time.Second,
 		IsSame: func(key string, oldData, newData interface{}) bool {
 			return false
 		},
 		Fetcher: func(key string) (interface{}, error) {
-			return ret, nil
+			return ret.Load().(string), nil
 		},
 	}
 	c := NewAsyncCache(op)
 
 	v, err := c.Get(key)
 	assert.Nil(t, err)
-	assert.Equal(t, v.(string), ret)
+	assert.Equal(t, v.(string), ret.Load().(string))
 
 	time.Sleep(time.Second / 2)
-	ret = "change"
+	ret.Store("change")
 	v, err = c.Get(key)
 	assert.Nil(t, err)
-	assert.NotEqual(t, v.(string), ret)
+	assert.NotEqual(t, v.(string), ret.Load().(string))
 
 	time.Sleep(time.Second)
 	v, err = c.Get(key)
 	assert.Nil(t, err)
-	assert.Equal(t, v.(string), ret)
+	assert.Equal(t, v.(string), ret.Load().(string))
+}
+
+func TestGetNilConcurrent(t *testing.T) {
+	// Regression: entry.Store used to reset the value with
+	// `e.val = atomic.Value{}` whenever the fetched value was nil, a
+	// non-atomic reassignment of the atomic.Value field that raced with the
+	// concurrent e.val.Load() in Get and the background refresh goroutine.
+	// A Fetcher that alternates nil/non-nil must be race-free under -race.
+	var n int64
+	op := Options{
+		RefreshDuration: time.Millisecond,
+		Fetcher: func(key string) (interface{}, error) {
+			if atomic.AddInt64(&n, 1)%2 == 0 {
+				return nil, nil
+			}
+			return "v", nil
+		},
+	}
+	c := NewAsyncCache(op)
+	for i := 0; i < 8; i++ {
+		_, _ = c.Get("k")
+	}
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	for g := 0; g < 8; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					_, _ = c.Get("k")
+				}
+			}
+		}()
+	}
+	time.Sleep(200 * time.Millisecond)
+	close(stop)
+	wg.Wait()
 }
 
 func TestGetErr(t *testing.T) {
@@ -85,29 +133,33 @@ func TestGetErr(t *testing.T) {
 }
 
 func TestGetOrSetOK(t *testing.T) {
-	var key, ret, def = "key", "ret", "def"
+	var key, def = "key", "def"
+	// ret is read by the Fetcher from the background refresh goroutine and
+	// updated by the test body, so it must be accessed atomically.
+	var ret atomic.Value
+	ret.Store("ret")
 	op := Options{
 		RefreshDuration: time.Second,
 		IsSame: func(key string, oldData, newData interface{}) bool {
 			return false
 		},
 		Fetcher: func(key string) (interface{}, error) {
-			return ret, nil
+			return ret.Load().(string), nil
 		},
 	}
 	c := NewAsyncCache(op)
 
 	v := c.GetOrSet(key, def)
-	assert.Equal(t, v.(string), ret)
+	assert.Equal(t, v.(string), ret.Load().(string))
 
 	time.Sleep(time.Second / 2)
-	ret = "change"
+	ret.Store("change")
 	v = c.GetOrSet(key, def)
-	assert.NotEqual(t, v.(string), ret)
+	assert.NotEqual(t, v.(string), ret.Load().(string))
 
 	time.Sleep(time.Second)
 	v = c.GetOrSet(key, def)
-	assert.Equal(t, v.(string), ret)
+	assert.Equal(t, v.(string), ret.Load().(string))
 }
 
 func TestGetOrSetErr(t *testing.T) {

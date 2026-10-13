@@ -97,6 +97,14 @@ var (
 	refreshTickerMap, expireTickerMap sync.Map
 )
 
+// valueHolder wraps the cached value so it can always be stored through
+// atomic.Value.Store. atomic.Value panics when storing a nil interface and
+// when the stored concrete type changes between calls; wrapping every value in
+// a single holder type avoids both, and -- crucially -- lets Store update the
+// value without reassigning the atomic.Value field, which would race with
+// concurrent Load calls.
+type valueHolder struct{ val interface{} }
+
 type entry struct {
 	val    atomic.Value
 	expire int32 // 0 means useful, 1 will expire
@@ -104,12 +112,17 @@ type entry struct {
 }
 
 func (e *entry) Store(x interface{}, err error) {
-	if x != nil {
-		e.val.Store(x)
-	} else {
-		e.val = atomic.Value{}
-	}
+	e.val.Store(valueHolder{val: x})
 	e.err.Store(err)
+}
+
+// loadVal returns the cached value, or nil if nothing has been stored yet.
+func (e *entry) loadVal() interface{} {
+	v := e.val.Load()
+	if v == nil {
+		return nil
+	}
+	return v.(valueHolder).val
 }
 
 func (e *entry) Touch() {
@@ -178,7 +191,7 @@ func (c *asyncCache) Get(key string) (val interface{}, err error) {
 	if ok {
 		e := val.(*entry)
 		e.Touch()
-		return e.val.Load(), e.err.Load()
+		return e.loadVal(), e.err.Load()
 	}
 
 	val, err, _ = c.sfg.Do(key, func() (v interface{}, e error) {
@@ -203,7 +216,7 @@ func (c *asyncCache) GetOrSet(key string, def interface{}) (val interface{}) {
 			return def
 		}
 		e.Touch()
-		return e.val.Load()
+		return e.loadVal()
 	}
 
 	val, _, _ = c.sfg.Do(key, func() (interface{}, error) {
@@ -229,7 +242,7 @@ func (c *asyncCache) Dump() map[string]interface{} {
 			c.data.Delete(key)
 			return true
 		}
-		data[k] = val.(*entry).val.Load()
+		data[k] = val.(*entry).loadVal()
 		return true
 	})
 	return data
@@ -241,7 +254,7 @@ func (c *asyncCache) DeleteIf(shouldDelete func(key string) bool) {
 		s := key.(string)
 		if shouldDelete(s) {
 			if c.opt.DeleteHandler != nil {
-				go c.opt.DeleteHandler(s, value.(*entry).val.Load())
+				go c.opt.DeleteHandler(s, value.(*entry).loadVal())
 			}
 			c.data.Delete(key)
 		}
@@ -322,7 +335,7 @@ func (c *asyncCache) expire() {
 		}
 		if !atomic.CompareAndSwapInt32(&e.expire, 0, 1) {
 			if c.opt.DeleteHandler != nil {
-				go c.opt.DeleteHandler(k, e.val.Load())
+				go c.opt.DeleteHandler(k, e.loadVal())
 			}
 			c.data.Delete(key)
 		}
@@ -357,9 +370,9 @@ func (c *asyncCache) refresh() {
 			return true
 		}
 
-		if c.opt.IsSame != nil && !c.opt.IsSame(k, e.val.Load(), newVal) {
+		if c.opt.IsSame != nil && !c.opt.IsSame(k, e.loadVal(), newVal) {
 			if c.opt.ChangeHandler != nil {
-				go c.opt.ChangeHandler(k, e.val.Load(), newVal)
+				go c.opt.ChangeHandler(k, e.loadVal(), newVal)
 			}
 		}
 
