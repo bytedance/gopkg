@@ -52,7 +52,8 @@ func (ll *localLogger) logf(lv Level, format *string, v ...interface{}) {
 	} else {
 		msg += fmt.Sprint(v...)
 	}
-	ll.logger.Output(3, msg)
+	// Skip logf, the localLogger method, and the package-level logging function.
+	_ = ll.logger.Output(4, msg)
 	if lv == LevelFatal {
 		os.Exit(1)
 	}
