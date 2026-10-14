@@ -270,6 +270,16 @@ func (z *Float64Set) Range(start, stop int) []Float64Node {
 	if stop < 0 {
 		stop = z.list.length + stop
 	}
+	// Clamp to the valid range, matching Redis ZRANGE: a start that is still
+	// negative after the offset conversion is treated as 0, and a stop past the
+	// end is treated as the last index. Without clamping, e.g. Range(-8, -1)
+	// on a 4-element set wrongly returns nothing instead of the whole set.
+	if start < 0 {
+		start = 0
+	}
+	if stop >= z.list.length {
+		stop = z.list.length - 1
+	}
 
 	var res []Float64Node
 	x := z.list.GetNodeByRank(start + 1) // 0-based rank -> 1-based rank
@@ -334,6 +344,13 @@ func (z *Float64Set) RevRange(start, stop int) []Float64Node {
 	}
 	if stop < 0 {
 		stop = z.list.length + stop
+	}
+	// Clamp to the valid range, matching Redis ZREVRANGE (see Range).
+	if start < 0 {
+		start = 0
+	}
+	if stop >= z.list.length {
+		stop = z.list.length - 1
 	}
 
 	var res []Float64Node

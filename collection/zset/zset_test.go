@@ -301,6 +301,34 @@ func TestFloat64SetRange_Negative(t *testing.T) {
 	assert.Equal(t, z.Len()-1, z.Rank(ns[0].Value))
 }
 
+func TestFloat64SetRange_OutOfRangeClamp(t *testing.T) {
+	// Redis ZRANGE clamps indices after the negative-offset conversion: a start
+	// that is still negative becomes 0 and a stop past the end becomes len-1.
+	z := NewFloat64()
+	for i, v := range []string{"a", "b", "c", "d"} {
+		z.Add(float64(i+1), v)
+	}
+
+	// negative start beyond -len clamps to the first element
+	assert.Equal(t, []Float64Node{{"a", 1}, {"b", 2}, {"c", 3}, {"d", 4}}, z.Range(-8, -1))
+	assert.Equal(t, []Float64Node{{"a", 1}, {"b", 2}}, z.Range(-8, 1))
+	assert.Equal(t, []Float64Node{{"a", 1}}, z.Range(-8, -4))
+	// positive stop beyond len-1 clamps to the last element
+	assert.Equal(t, []Float64Node{{"a", 1}, {"b", 2}, {"c", 3}, {"d", 4}}, z.Range(0, 99))
+	// empty when start resolves past stop (both non-negative)
+	assert.Equal(t, 0, len(z.Range(2, 1)))
+
+	// same clamping in reverse
+	assert.Equal(t, []Float64Node{{"d", 4}, {"c", 3}, {"b", 2}, {"a", 1}}, z.RevRange(-8, -1))
+	assert.Equal(t, []Float64Node{{"d", 4}, {"c", 3}}, z.RevRange(-8, 1))
+	assert.Equal(t, []Float64Node{{"d", 4}, {"c", 3}, {"b", 2}, {"a", 1}}, z.RevRange(0, 99))
+
+	// empty set never panics
+	empty := NewFloat64()
+	assert.Equal(t, 0, len(empty.Range(-5, -1)))
+	assert.Equal(t, 0, len(empty.RevRange(-5, -1)))
+}
+
 func TestFloat64SetRevRange_Negative(t *testing.T) {
 	const N = 1000
 	z := NewFloat64()
