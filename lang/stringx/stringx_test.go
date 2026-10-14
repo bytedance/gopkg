@@ -128,6 +128,24 @@ func TestRotate(t *testing.T) {
 
 	assert.Equal(t, "cab", Rotate("abc", 1))
 	assert.Equal(t, "bca", Rotate("abc", -1))
+
+	// Rotation is by characters (runes), not bytes. The period for a string
+	// containing multi-byte runes is its rune count, so shifts whose magnitude
+	// exceed that must wrap by rune count, not byte length.
+	assert.Equal(t, "🙂abc", Rotate("🙂abc", 0))
+	assert.Equal(t, "c🙂ab", Rotate("🙂abc", 1))
+	assert.Equal(t, "abc🙂", Rotate("🙂abc", -1))
+	assert.Equal(t, "😁😀", Rotate("😀😁", 1))
+	// Period is the rune count (4), not the byte length (7). A shift of 7 must
+	// wrap as 7 % 4 == 3, whereas the old byte-based modulus made 7 % 7 == 0
+	// and wrongly returned the input unchanged.
+	assert.Equal(t, "abc🙂", Rotate("🙂abc", 7))
+	assert.Equal(t, "c🙂ab", Rotate("🙂abc", -7))
+	assert.Equal(t, "bc🙂a", Rotate("🙂abc", 6)) // 6 % 4 == 2
+	// a shift equal to the rune count is a full revolution and is a no-op.
+	assert.Equal(t, "🙂abc", Rotate("🙂abc", 4))
+	// ASCII is unchanged (byte count == rune count).
+	assert.Equal(t, "cab", Rotate("abc", 4)) // 4 % 3 == 1
 }
 
 func TestReverse(t *testing.T) {

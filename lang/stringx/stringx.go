@@ -155,19 +155,25 @@ func Rotate(s string, shift int) string {
 	if shift == 0 {
 		return s
 	}
-	sLen := len(s)
-	if sLen == 0 {
+	// Rotation is by characters (runes), consistent with Sub/SubStart which are
+	// unicode-indexed. Using len(s) here makes the modulus a BYTE count, so for
+	// strings containing multi-byte runes a shift whose magnitude exceeds the
+	// rune count is taken against the wrong period: e.g. Rotate("🙂abc", 7)
+	// returned "🙂abc" instead of rotating one character. ASCII strings are
+	// unaffected because their byte and rune counts are equal.
+	runeLen := utf8.RuneCountInString(s)
+	if runeLen == 0 {
 		return s
 	}
 
-	shiftMod := shift % sLen
+	shiftMod := shift % runeLen
 	if shiftMod == 0 {
 		return s
 	}
 
 	offset := -(shiftMod)
 	sb := strings.Builder{}
-	sb.Grow(sLen)
+	sb.Grow(len(s))
 	_, _ = sb.WriteString(SubStart(s, offset))
 	_, _ = sb.WriteString(Sub(s, 0, offset))
 	return sb.String()
