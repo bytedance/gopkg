@@ -546,6 +546,26 @@ func TestFloat64SetRemoveRangeByScore(t *testing.T) {
 	assert.Equal(t, N, z.Len()+len(actualNs))
 }
 
+func TestFloat64SetRemoveRangeByScoreConcurrently(t *testing.T) {
+	const N = 1000
+	z := NewFloat64()
+	for i := 0; i < N; i++ {
+		z.Add(float64(i), strconv.Itoa(i))
+	}
+	const G = 10
+	wg := sync.WaitGroup{}
+	for i := 0; i < G; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			min := float64(fastrand.Intn(N / 2))
+			max := float64(N/2) + min
+			z.RemoveRangeByScore(min, max)
+		}()
+	}
+	wg.Wait()
+}
+
 func TestFloat64SetRemoveRangeByScoreWithOpt(t *testing.T) {
 	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{})
 	testFloat64SetRemoveRangeByScoreWithOpt(t, RangeOpt{true, true})
