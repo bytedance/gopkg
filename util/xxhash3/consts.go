@@ -84,7 +84,7 @@ const (
 	xsecret32_012 uint32 = 0x2c81017c
 )
 
-var xsecret = unsafe.Pointer(&[192]uint8{
+var xsecretSrc = [192]uint8{
 	/* 	0 	*/ 0xb8, 0xfe, 0x6c, 0x39, 0x23, 0xa4, 0x4b, 0xbe, 0x7c, 0x01, 0x81, 0x2c, 0xf7, 0x21, 0xad, 0x1c,
 	/* 	16 	*/ 0xde, 0xd4, 0x6d, 0xe9, 0x83, 0x90, 0x97, 0xdb, 0x72, 0x40, 0xa4, 0xa4, 0xb7, 0xb3, 0x67, 0x1f,
 	/* 	32 	*/ 0xcb, 0x79, 0xe6, 0x4e, 0xcc, 0xc0, 0xe5, 0x78, 0x82, 0x5a, 0xd0, 0x7d, 0xcc, 0xff, 0x72, 0x21,
@@ -97,4 +97,30 @@ var xsecret = unsafe.Pointer(&[192]uint8{
 	/* 	144	*/ 0x17, 0x0d, 0xdd, 0x51, 0xb7, 0xf0, 0xda, 0x49, 0xd3, 0x16, 0x55, 0x26, 0x29, 0xd4, 0x68, 0x9e,
 	/* 	160	*/ 0x2b, 0x16, 0xbe, 0x58, 0x7d, 0x47, 0xa1, 0xfc, 0x8f, 0xf8, 0xb8, 0xd1, 0x7a, 0xd0, 0x31, 0xce,
 	/* 	176	*/ 0x45, 0xcb, 0x3a, 0x8f, 0x95, 0x16, 0x04, 0x28, 0xaf, 0xd7, 0xfb, 0xca, 0xbb, 0x4b, 0x40, 0x7e,
-})
+}
+
+// xsecretAlign is the alignment, in bytes, required by the SSE2 accumulator
+// (see the "PXOR 128(DX), X1"-shaped instructions in sse2_amd64.s): those are
+// legacy (non-VEX) SSE instructions with a direct memory operand, and the
+// CPU faults with SIGSEGV if the operand isn't aligned. A plain [192]uint8
+// carries no alignment guarantee beyond 1 byte, and whether it happens to
+// land on a 16-byte boundary is down to incidental allocator placement,
+// which can (and does) change between Go versions. See
+// https://github.com/mmcloughlin/avo/issues/497.
+const xsecretAlign = 16
+
+// xsecretBuf backs xsecret with xsecretAlign-1 extra bytes of slack, so that
+// some address within it is always xsecretAlign-aligned regardless of where
+// the runtime places it.
+var xsecretBuf [xsecretAlign - 1 + len(xsecretSrc)]uint8
+
+// xsecret points at the xsecretAlign-aligned copy of xsecretSrc within
+// xsecretBuf, computed and populated once at init time.
+var xsecret unsafe.Pointer
+
+func init() {
+	addr := uintptr(unsafe.Pointer(&xsecretBuf[0]))
+	off := (xsecretAlign - addr%xsecretAlign) % xsecretAlign
+	copy(xsecretBuf[off:], xsecretSrc[:])
+	xsecret = unsafe.Pointer(&xsecretBuf[off])
+}
