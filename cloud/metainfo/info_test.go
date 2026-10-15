@@ -927,3 +927,54 @@ func TestGetValueToMap(t *testing.T) {
 	metainfo.GetValueToMap(ctx, m, k)
 	assert(t, m[k] == v)
 }
+
+func TestWithoutPersistentValues(t *testing.T) {
+	// Normal behaviour
+	ctx := context.Background()
+
+	k1, v1 := "key1", "value1"
+	k2, v2 := "key2", "value2"
+	k3, v3 := "key3", "value3"
+	ctx = metainfo.WithPersistentValue(ctx, k1, v1)
+	ctx = metainfo.WithPersistentValue(ctx, k2, v2)
+	ctx = metainfo.WithPersistentValue(ctx, k3, v3)
+
+	ctx = metainfo.WithoutPersistentValues(ctx)
+	assert(t, ctx != nil)
+
+	_, ok := metainfo.GetPersistentValue(ctx, k1)
+	assert(t, !ok)
+	_, ok = metainfo.GetPersistentValue(ctx, k2)
+	assert(t, !ok)
+	_, ok = metainfo.GetPersistentValue(ctx, k3)
+	assert(t, !ok)
+
+	m := metainfo.GetAllPersistentValues(ctx)
+	assert(t, len(m) == 0)
+
+	// Transient values should remain
+	ctx = context.Background()
+	kt, vt := "transientKey", "transientValue"
+	kp, vp := "persistentKey", "persistentValue"
+	ctx = metainfo.WithValue(ctx, kt, vt)
+	ctx = metainfo.WithPersistentValue(ctx, kp, vp)
+
+	ctx = metainfo.WithoutPersistentValues(ctx)
+
+	x, ok := metainfo.GetValue(ctx, kt)
+	assert(t, ok)
+	assert(t, x == vt)
+	_, ok = metainfo.GetPersistentValue(ctx, kp)
+	assert(t, !ok)
+
+	// Context without node
+	ctx = context.Background()
+	newCtx := metainfo.WithoutPersistentValues(ctx)
+	assert(t, newCtx == ctx)
+
+	// No persistent values
+	ctx = context.Background()
+	ctx = metainfo.WithValue(ctx, "key", "val")
+	newCtx = metainfo.WithoutPersistentValues(ctx)
+	assert(t, newCtx == ctx)
+}
