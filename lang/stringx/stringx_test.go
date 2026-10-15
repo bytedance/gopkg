@@ -141,6 +141,7 @@ func TestReverse(t *testing.T) {
 		{"çınar", "ranıç"},
 		{"    yağmur", "rumğay    "},
 		{"επαγγελματίες", "ςείταμλεγγαπε"},
+		{"a\uFFFDb", "b\uFFFDa"},
 	}
 	for _, test := range tests {
 		output := MustReverse(test.input)

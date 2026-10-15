@@ -252,7 +252,8 @@ func Reverse(s string) (string, error) {
 	dstIndex := 0
 	for srcIndex > 0 {
 		r, n := utf8.DecodeLastRune(src[:srcIndex])
-		if r == utf8.RuneError {
+		// A valid U+FFFD in the input also decodes to RuneError, but with n == 3.
+		if r == utf8.RuneError && n <= 1 {
 			return hack.BytesToString(dst), ErrDecodeRune
 		}
 		utf8.EncodeRune(dst[dstIndex:], r)
