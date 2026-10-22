@@ -156,15 +156,21 @@ func (s *Int64Map) Store(key int64, value interface{}) {
 	for {
 		nodeFound := s.findNode(key, &preds, &succs)
 		if nodeFound != nil { // indicating the key is already in the skip-list
-			if !nodeFound.flags.Get(marked) {
-				// We don't need to care about whether or not the node is fully linked,
-				// just replace the value.
-				nodeFound.storeVal(value)
-				return
+			if !nodeFound.flags.MGet(fullyLinked|marked, fullyLinked) {
+				// If the node is not fully linked or is marked for deletion,
+				// we need to retry in the next loop.
+				continue
 			}
-			// If the node is marked, represents some other goroutines is in the process of deleting this node,
-			// we need to add this node in next loop.
-			continue
+			// Lock the node to prevent a concurrent delete from
+			// marking and unlinking it while we update the value.
+			nodeFound.mu.Lock()
+			if nodeFound.flags.Get(marked) {
+				nodeFound.mu.Unlock()
+				continue
+			}
+			nodeFound.storeVal(value)
+			nodeFound.mu.Unlock()
+			return
 		}
 
 		// Add this node into skip list.
@@ -321,14 +327,12 @@ func (s *Int64Map) LoadOrStore(key int64, value interface{}) (actual interface{}
 	for {
 		nodeFound := s.findNode(key, &preds, &succs)
 		if nodeFound != nil { // indicating the key is already in the skip-list
-			if !nodeFound.flags.Get(marked) {
-				// We don't need to care about whether or not the node is fully linked,
-				// just return the value.
-				return nodeFound.loadVal(), true
+			if !nodeFound.flags.MGet(fullyLinked|marked, fullyLinked) {
+				// If the node is not fully linked or is marked for deletion,
+				// we need to retry in the next loop.
+				continue
 			}
-			// If the node is marked, represents some other goroutines is in the process of deleting this node,
-			// we need to add this node in next loop.
-			continue
+			return nodeFound.loadVal(), true
 		}
 
 		// Add this node into skip list.
@@ -391,14 +395,12 @@ func (s *Int64Map) LoadOrStoreLazy(key int64, f func() interface{}) (actual inte
 	for {
 		nodeFound := s.findNode(key, &preds, &succs)
 		if nodeFound != nil { // indicating the key is already in the skip-list
-			if !nodeFound.flags.Get(marked) {
-				// We don't need to care about whether or not the node is fully linked,
-				// just return the value.
-				return nodeFound.loadVal(), true
+			if !nodeFound.flags.MGet(fullyLinked|marked, fullyLinked) {
+				// If the node is not fully linked or is marked for deletion,
+				// we need to retry in the next loop.
+				continue
 			}
-			// If the node is marked, represents some other goroutines is in the process of deleting this node,
-			// we need to add this node in next loop.
-			continue
+			return nodeFound.loadVal(), true
 		}
 
 		// Add this node into skip list.
